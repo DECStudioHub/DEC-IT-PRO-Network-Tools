@@ -1,7 +1,7 @@
-# DEC IT PRO Network Tool
+# DEC IT PRO Network Tools
 ### Store WiFi Hitmap & Network Infrastructure Planner
 
-[![Deploy DEC IT PRO Network Tool to GitHub Pages](https://github.com/DECStudioHub/DEC-IT-PRO-Network-Tool/actions/workflows/deploy.yml/badge.svg)](https://github.com/DECStudioHub/DEC-IT-PRO-Network-Tool/actions/workflows/deploy.yml)
+[![Deploy DEC IT PRO Network Tool to GitHub Pages](https://github.com/DECStudioHub/DEC-IT-PRO-Network-Tools/actions/workflows/deploy.yml/badge.svg)](https://github.com/DECStudioHub/DEC-IT-PRO-Network-Tools/actions/workflows/deploy.yml)
 
 A client-side web application designed for IT infrastructure teams, store network engineers, and site surveyors. The application allows users to upload architectural floor plans (PNG, JPG, or multi-page vector PDF), calibrate real-world scale, place MDF/IDF network distribution cabinets and wireless access points, draw point-to-point and multi-segment LAN cable routes with real-world distance calculation, perform WiFi signal level site surveys, and export multi-page engineering PDF reports and high-resolution composite hitmap diagrams.
 
@@ -52,7 +52,7 @@ A client-side web application designed for IT infrastructure teams, store networ
 
 This repository is configured for automated build and deployment to **GitHub Pages** at:
 
-`https://DECStudioHub.github.io/DEC-IT-PRO-Network-Tool/`
+`https://DECStudioHub.github.io/DEC-IT-PRO-Network-Tools/`
 
 ### Automated Deployment (GitHub Actions)
 
@@ -75,8 +75,8 @@ This repository is configured for automated build and deployment to **GitHub Pag
 ### 1. Installation
 Clone the repository and install dependencies:
 ```bash
-git clone https://github.com/DECStudioHub/DEC-IT-PRO-Network-Tool.git
-cd DEC-IT-PRO-Network-Tool
+git clone https://github.com/DECStudioHub/DEC-IT-PRO-Network-Tools.git
+cd DEC-IT-PRO-Network-Tools
 npm install
 ```
 
