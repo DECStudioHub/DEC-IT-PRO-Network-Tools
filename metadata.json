@@ -1,6 +1,6 @@
 {
-  "name": "Store WiFi Hitmap & Network Planner",
-  "description": "Professional store WiFi hitmap, wireless coverage assessment, and network infrastructure planning tool with MDF/IDF cabinets and LAN cable length measurement.",
+  "name": "DECStudioAiCreation - WIFI HITMAP",
+  "description": "DECStudioAiCreation WIFI HITMAP is a WiFi signal strength and network infrastructure planning system designed to visualize WiFi coverage, Access Points, MDF, IDF, LAN Cable routes, and engineering assessments.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

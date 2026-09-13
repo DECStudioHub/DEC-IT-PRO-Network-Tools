@@ -40,6 +40,7 @@ import {
   Trash2,
   Move,
   AlertCircle,
+  Upload,
 } from 'lucide-react';
 
 interface FloorPlanWorkspaceProps {
@@ -79,6 +80,7 @@ interface FloorPlanWorkspaceProps {
   cableDrawingRoute: LanCableRoutePoint[];
   setCableDrawingRoute: React.Dispatch<React.SetStateAction<LanCableRoutePoint[]>>;
   onFinishCableDrawing: () => void;
+  onUploadFloorPlan?: () => void;
 }
 
 export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
@@ -117,6 +119,7 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
   cableDrawingRoute,
   setCableDrawingRoute,
   onFinishCableDrawing,
+  onUploadFloorPlan,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const heatmapCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -210,19 +213,52 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
     [floorPlan, zoom, pan]
   );
 
-  // Pan / Zoom Wheel Handler (Pinch or Ctrl+wheel to zoom, regular wheel to scroll)
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey || e.metaKey) {
+  // Smart Mouse Scroll Zoom (focused around cursor, clamped 0.25 to 3.0) (#214 - #218)
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !floorPlan) return;
+
+    const onWheelHandler = (e: WheelEvent) => {
+      // Prevent browser from scrolling the entire page (#218)
       e.preventDefault();
-      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
-      setZoom((prev) => Math.min(3.5, Math.max(0.3, Math.round(prev * zoomFactor * 100) / 100)));
-    } else {
-      setPan((prev) => ({
-        x: (prev?.x || 0) - e.deltaX * 0.8,
-        y: (prev?.y || 0) - e.deltaY * 0.8,
-      }));
-    }
-  };
+
+      const rect = container.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Determine zoom direction: deltaY < 0 is wheel up (Zoom In), deltaY > 0 is wheel down (Zoom Out) (#214)
+      const zoomStep = e.deltaY < 0 ? 1.12 : 0.88;
+
+      setZoom((currentZoom) => {
+        // Enforce limits: Min 25% (0.25), Max 300% (3.0) (#216)
+        const nextZoom = Math.min(3.0, Math.max(0.25, Math.round(currentZoom * zoomStep * 100) / 100));
+        if (nextZoom === currentZoom) return currentZoom;
+
+        const ratio = nextZoom / currentZoom;
+
+        // Keep the point underneath the mouse pointer static (#215)
+        setPan((currentPan) => {
+          const planCenterX = rect.width / 2 + (currentPan?.x || 0);
+          const planCenterY = rect.height / 2 + (currentPan?.y || 0);
+
+          const dx = mouseX - planCenterX;
+          const dy = mouseY - planCenterY;
+
+          return {
+            x: Math.round(((currentPan?.x || 0) - dx * (ratio - 1)) * 10) / 10,
+            y: Math.round(((currentPan?.y || 0) - dy * (ratio - 1)) * 10) / 10,
+          };
+        });
+
+        return nextZoom;
+      });
+    };
+
+    container.addEventListener('wheel', onWheelHandler, { passive: false });
+    return () => {
+      container.removeEventListener('wheel', onWheelHandler);
+    };
+  }, [floorPlan, setZoom, setPan]);
 
   // Workspace pointer down (handles canvas panning)
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -509,20 +545,30 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-blue-600 mb-4 shadow-2xs">
             <Radio className="h-7 w-7" />
           </div>
+          <div className="text-[10px] font-extrabold tracking-wider text-blue-600 uppercase mb-0.5">
+            DECStudioAiCreation
+          </div>
           <h2 className="text-lg font-bold tracking-tight text-slate-900 mb-1">
-            STORE FLOOR PLAN WORKSPACE
+            WIFI HITMAP WORKSPACE
           </h2>
           <p className="text-xs text-slate-500 mb-6 leading-relaxed">
-            Upload a high-resolution store floor plan (PNG, JPG, or PDF) to start placing MDF server
-            cabinets, selling area IDF switch hubs, wireless APs, and measuring LAN cable routes.
+            Upload a branch floor plan (PNG, JPG, or PDF) to start placing MDF server
+            cabinets, IDF switch hubs, wireless APs, WiFi readings, and measuring LAN cable routes.
           </p>
 
           <div className="flex flex-col gap-2.5">
             <button
-              onClick={() => onAddPointClick({ x: 0.5, y: 0.5 })}
-              className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors"
+              onClick={() => {
+                if (onUploadFloorPlan) {
+                  onUploadFloorPlan();
+                } else {
+                  onAddPointClick({ x: 0.5, y: 0.5 });
+                }
+              }}
+              className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer"
             >
-              Upload Store Floor Plan
+              <Upload className="h-4 w-4" />
+              <span>Upload Branch Floor Plan</span>
             </button>
           </div>
         </div>
@@ -533,7 +579,6 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
   return (
     <div
       ref={containerRef}
-      onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -565,7 +610,7 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
         {/* Layer 1: Architectural Floor Plan Background (Source of Truth - Pristine) */}
         <img
           src={floorPlan.backgroundDataUrl}
-          alt="Store Architectural Floor Plan"
+          alt="Branch Architectural Floor Plan"
           draggable={false}
           className="absolute inset-0 h-full w-full object-contain pointer-events-none"
         />
@@ -594,8 +639,18 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
             </defs>
 
             {/* Existing Saved LAN Cable Routes */}
-            {lanCables.map((cable) => {
-              if (!cable.route || cable.route.length < 2 || !cable.route[0] || !cable.route[1]) return null;
+            {(lanCables || []).map((cable) => {
+              if (!cable || !cable.id || !Array.isArray(cable.route) || cable.route.length < 2 || !cable.route[0] || !cable.route[1]) {
+                return null;
+              }
+              // Defensive coordinate validation (#227)
+              const hasValidCoords = cable.route.every(
+                (p) => p && typeof p.x === 'number' && !isNaN(p.x) && typeof p.y === 'number' && !isNaN(p.y)
+              );
+              if (!hasValidCoords) {
+                console.warn(`[WIFI HITMAP] Skipping corrupted cable route for: ${cable.id}`);
+                return null;
+              }
               const pointsStr = cable.route
                 .map((p) => `${p.x * planW},${p.y * planH}`)
                 .join(' ');

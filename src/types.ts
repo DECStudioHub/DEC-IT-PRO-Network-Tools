@@ -45,6 +45,7 @@ export interface AppearanceSettings {
 
 export interface MDFDevice {
   id: string; // e.g. "MDF-01"
+  name?: string;
   type: 'Server Cabinet';
   location: string; // e.g. "Server Room"
   description: string; // e.g. "Main Server Cabinet"
@@ -55,6 +56,7 @@ export interface MDFDevice {
 
 export interface IDFDevice {
   id: string; // e.g. "IDF-01"
+  name?: string;
   type: 'Switch Hub';
   area: string; // e.g. "Selling Area"
   location: string; // e.g. "Selling Area"
@@ -76,6 +78,8 @@ export interface AccessPoint {
 
 export interface SignalReading {
   id: string;
+  name?: string;
+  ssid?: string;
   signal: number; // 0 to 100
   bars: 1 | 2 | 3;
   classification: 'Excellent / Strong' | 'Good / Moderate' | 'Weak';
@@ -125,17 +129,24 @@ export interface FloorScale {
 
 export interface StoreInfo {
   storeName: string;
+  branchName?: string;
   storeCode: string;
+  branchCode?: string;
   location: string;
   floorArea: string;
   assessmentDate: string;
   preparedBy: string; // Created By / IT Technician name
   technicianPosition?: string; // e.g. "IT Technician"
+  position?: string;
+  acknowledgedBy?: string; // Acknowledged By name
+  acknowledgedPosition?: string; // e.g. "Branch Manager"
   dateCreated?: string; // Persistent initial creation date
   timeCreated?: string; // Persistent initial creation time
   lastModified?: string; // Updated on each save
   remarks?: string;
 }
+
+export type BranchInfo = StoreInfo;
 
 export type OverallHitmapStatus = 'EXCELLENT' | 'GOOD' | 'NEEDS ATTENTION' | 'INSUFFICIENT DATA';
 

@@ -53,8 +53,11 @@ export const PrintView: React.FC<PrintViewProps> = ({
       {/* Document Header */}
       <div className="border-b-2 border-slate-900 pb-3 mb-4 flex items-start justify-between">
         <div>
+          <div className="text-[11px] font-extrabold tracking-wider text-blue-700 uppercase">
+            DECStudioAiCreation
+          </div>
           <h1 className="text-xl font-black tracking-tight text-slate-950 uppercase">
-            STORE WIFI HITMAP
+            WIFI HITMAP
           </h1>
           <p className="text-xs font-bold text-slate-700 mt-0.5">
             WiFi Signal Strength & Network Infrastructure Plan
@@ -71,22 +74,24 @@ export const PrintView: React.FC<PrintViewProps> = ({
         </div>
       </div>
 
-      {/* Store Information Grid (#104) */}
+      {/* Branch Information Grid (#104, #184) */}
       <div className="grid grid-cols-4 gap-3 p-3 rounded-lg border border-slate-300 bg-slate-50/70 mb-4 text-xs">
         <div>
-          <span className="font-bold uppercase text-slate-500 text-[10px] block">Store Name</span>
+          <span className="font-bold uppercase text-slate-500 text-[10px] block">Branch Name</span>
           <span className="font-bold text-slate-900 text-sm block">
-            {storeInfo.storeName || 'Retail Store'}
+            {storeInfo.branchName || storeInfo.storeName || 'Branch'}
           </span>
-          {storeInfo.storeCode && (
-            <span className="text-slate-500 font-mono text-[11px]">Code: {storeInfo.storeCode}</span>
+          {(storeInfo.branchCode || storeInfo.storeCode) && (
+            <span className="text-slate-500 font-mono text-[11px]">
+              Code: {storeInfo.branchCode || storeInfo.storeCode}
+            </span>
           )}
         </div>
 
         <div>
           <span className="font-bold uppercase text-slate-500 text-[10px] block">Location / Area</span>
           <span className="font-semibold text-slate-800 block">
-            {storeInfo.location || 'Store Floor'}
+            {storeInfo.location || 'Main Floor'}
           </span>
           <span className="text-slate-500 text-[11px] block">{storeInfo.floorArea || 'Level 1'}</span>
         </div>
@@ -103,7 +108,9 @@ export const PrintView: React.FC<PrintViewProps> = ({
           <span className="font-semibold text-slate-800 block">
             {storeInfo.preparedBy || 'Field IT Technician'}
           </span>
-          <span className="text-[10px] text-slate-500 block">IT Infrastructure Operations</span>
+          <span className="text-[10px] text-slate-500 block">
+            {storeInfo.position || 'IT Infrastructure Operations'}
+          </span>
         </div>
       </div>
 
@@ -121,7 +128,7 @@ export const PrintView: React.FC<PrintViewProps> = ({
           <div className="flex justify-center bg-slate-50 rounded border border-slate-200 overflow-hidden">
             <img
               src={compositeDataUrl}
-              alt="Store WiFi Hitmap and Network Plan"
+              alt="Branch WiFi Hitmap and Network Plan"
               className="w-full max-h-[460px] object-contain"
             />
           </div>
@@ -260,23 +267,40 @@ export const PrintView: React.FC<PrintViewProps> = ({
         )}
       </div>
 
-      {/* Sign-off / Verification section */}
-      <div className="grid grid-cols-2 gap-8 pt-3 border-t-2 border-slate-300 text-xs">
+      {/* Sign-off / Verification section (#184, #190) */}
+      <div className="grid grid-cols-2 gap-8 pt-4 border-t-2 border-slate-300 text-xs">
         <div>
-          <span className="font-bold text-slate-800 block mb-6">
-            Field Technician Sign-Off & Physical Verification:
+          <span className="font-bold text-slate-900 block mb-1">
+            Prepared By (IT Infrastructure / Survey Engineer):
           </span>
+          <div className="text-slate-800 font-semibold text-xs mb-0.5">
+            {storeInfo.preparedBy || 'Field IT Specialist'}
+          </div>
+          <div className="text-slate-500 text-[11px] mb-4">
+            {storeInfo.position || 'IT Infrastructure Operations'}
+          </div>
           <div className="border-b border-slate-400 w-3/4 mb-1" />
-          <span className="text-slate-500 text-[10px]">Signature / Date</span>
+          <span className="text-slate-500 text-[10px]">Signature & Verification Date</span>
         </div>
 
         <div>
-          <span className="font-bold text-slate-800 block mb-6">
-            Store Operations & IT Infrastructure Approval:
+          <span className="font-bold text-slate-900 block mb-1">
+            Acknowledged & Approved By (Branch Management):
           </span>
+          <div className="text-slate-800 font-semibold text-xs mb-0.5">
+            {storeInfo.acknowledgedBy || 'Branch / Operations Lead'}
+          </div>
+          <div className="text-slate-500 text-[11px] mb-4">
+            {storeInfo.acknowledgedPosition || 'Branch Manager / Site Lead'}
+          </div>
           <div className="border-b border-slate-400 w-3/4 mb-1" />
-          <span className="text-slate-500 text-[10px]">Signature / Date</span>
+          <span className="text-slate-500 text-[10px]">Signature & Approval Date</span>
         </div>
+      </div>
+
+      {/* Footer Branding (#184) */}
+      <div className="mt-4 pt-2 border-t border-slate-200 text-center text-[10px] text-slate-400">
+        DECStudioAiCreation • WIFI HITMAP Network Infrastructure Planning & Signal Survey System
       </div>
     </div>
   );

@@ -11,8 +11,10 @@ interface PdfPageSelectModalProps {
   isOpen: boolean;
   onClose: () => void;
   pdfDoc: pdfjsLib.PDFDocumentProxy | null;
-  fileName: string;
-  totalPages: number;
+  fileName?: string;
+  documentName?: string;
+  totalPages?: number;
+  numPages?: number;
   onSelectPage: (pageNumber: number) => void;
 }
 
@@ -21,9 +23,13 @@ export const PdfPageSelectModal: React.FC<PdfPageSelectModalProps> = ({
   onClose,
   pdfDoc,
   fileName,
+  documentName,
   totalPages,
+  numPages,
   onSelectPage,
 }) => {
+  const actualPages = totalPages ?? numPages ?? 1;
+  const actualName = fileName || documentName || 'Floor Plan PDF';
   const [selectedPage, setSelectedPage] = useState<number>(1);
   const [thumbnails, setThumbnails] = useState<{ [page: number]: string }>({});
   const [loadingThumbs, setLoadingThumbs] = useState<boolean>(false);
@@ -36,7 +42,7 @@ export const PdfPageSelectModal: React.FC<PdfPageSelectModalProps> = ({
 
     const renderThumbnails = async () => {
       const thumbs: { [page: number]: string } = {};
-      const maxToLoad = Math.min(totalPages, 12);
+      const maxToLoad = Math.min(actualPages, 12);
 
       for (let p = 1; p <= maxToLoad; p++) {
         if (!isMounted) break;
@@ -50,7 +56,7 @@ export const PdfPageSelectModal: React.FC<PdfPageSelectModalProps> = ({
           if (ctx) {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            await page.render({ canvasContext: ctx, viewport }).promise;
+            await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
             thumbs[p] = canvas.toDataURL('image/jpeg', 0.8);
           }
         } catch (e) {

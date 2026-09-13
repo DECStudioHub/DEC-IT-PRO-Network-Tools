@@ -43,14 +43,17 @@ import {
   Sliders,
 } from 'lucide-react';
 
+export type SelectedAppearanceItem =
+  | { type: 'mdf'; item: MDFDevice; id?: string; name?: string; appearance?: ItemAppearance }
+  | { type: 'idf'; item: IDFDevice; id?: string; name?: string; appearance?: ItemAppearance }
+  | { type: 'ap'; item: AccessPoint; id?: string; name?: string; appearance?: ItemAppearance }
+  | { type: 'cable'; item: LanCable; id?: string; name?: string; appearance?: ItemAppearance }
+  | { type: 'signal'; item: SignalReading; id?: string; name?: string; appearance?: ItemAppearance }
+  | { type: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal'; id: string; name: string; appearance?: ItemAppearance; item?: any }
+  | null;
+
 interface AppearancePanelProps {
-  selectedItem?:
-    | { type: 'mdf'; item: MDFDevice }
-    | { type: 'idf'; item: IDFDevice }
-    | { type: 'ap'; item: AccessPoint }
-    | { type: 'cable'; item: LanCable }
-    | { type: 'signal'; item: SignalReading }
-    | null;
+  selectedItem?: SelectedAppearanceItem;
   appearanceSettings: AppearanceSettings;
   onUpdateGlobalSettings: (settings: AppearanceSettings) => void;
   onUpdateItemAppearance: (
@@ -90,8 +93,9 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
 
   // Resolve current appearance
   const getCurrentAppearance = (): ItemAppearance => {
+    const selectedItemAppearance = (selectedItem as any)?.item?.appearance || (selectedItem as any)?.appearance;
     if (selectedItem && scope === 'item') {
-      return selectedItem.item.appearance || (
+      return selectedItemAppearance || (
         selectedItem.type === 'mdf'
           ? appearanceSettings.defaultMdf
           : selectedItem.type === 'idf'
@@ -122,9 +126,10 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
 
   const handleFieldChange = (fields: Partial<ItemAppearance>) => {
     const updated = { ...currentApp, ...fields };
+    const selectedItemId = (selectedItem as any)?.item?.id || (selectedItem as any)?.id || '';
 
     if (selectedItem && scope === 'item') {
-      onUpdateItemAppearance(selectedItem.type, selectedItem.item.id, updated);
+      onUpdateItemAppearance(selectedItem.type, selectedItemId, updated);
     } else {
       // Update global defaults for this category
       const nextGlobal: AppearanceSettings = { ...appearanceSettings };
@@ -138,6 +143,8 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
     }
   };
 
+  const selectedItemId = (selectedItem as any)?.item?.id || (selectedItem as any)?.id || '';
+
   return (
     <div className="space-y-4 text-slate-800">
       {/* Category or Selected Item Header */}
@@ -147,7 +154,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
             <Palette className="h-4 w-4 text-indigo-600" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
               {selectedItem
-                ? `Styling: ${selectedItem.item.id} (${selectedItem.type.toUpperCase()})`
+                ? `Styling: ${selectedItemId} (${selectedItem.type.toUpperCase()})`
                 : 'Customization & Appearance'}
             </h3>
           </div>
@@ -155,7 +162,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
             type="button"
             onClick={() => {
               if (selectedItem && scope === 'item') {
-                onResetTypeToDefault(selectedItem.type, selectedItem.item.id);
+                onResetTypeToDefault(selectedItem.type, selectedItemId);
               } else {
                 onResetTypeToDefault(targetCategory);
               }

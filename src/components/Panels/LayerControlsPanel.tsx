@@ -7,6 +7,8 @@ import React from 'react';
 import { VisibilitySettings } from '../../types';
 import { Eye, EyeOff, Layers } from 'lucide-react';
 
+type BooleanVisibilityKey = keyof Omit<VisibilitySettings, 'cableLabelMode'>;
+
 interface LayerControlsPanelProps {
   visibility: VisibilitySettings;
   onChange: (updated: VisibilitySettings) => void;
@@ -16,14 +18,14 @@ export const LayerControlsPanel: React.FC<LayerControlsPanelProps> = ({
   visibility,
   onChange,
 }) => {
-  const toggle = (key: keyof VisibilitySettings) => {
+  const toggle = (key: BooleanVisibilityKey) => {
     onChange({
       ...visibility,
       [key]: !visibility[key],
     });
   };
 
-  const layers: { key: keyof VisibilitySettings; label: string; desc: string; color: string }[] = [
+  const layers: { key: BooleanVisibilityKey; label: string; desc: string; color: string }[] = [
     { key: 'showMdf', label: 'MDF / SERVER CABINETS', desc: 'Main server cabinet markers', color: 'text-blue-600' },
     { key: 'showIdf', label: 'IDF / SWITCH HUBS', desc: 'Selling area switch hubs', color: 'text-teal-600' },
     { key: 'showAps', label: 'AP MARKERS', desc: 'Wireless Access Points', color: 'text-emerald-600' },
@@ -49,7 +51,7 @@ export const LayerControlsPanel: React.FC<LayerControlsPanelProps> = ({
 
       <div className="space-y-1.5">
         {layers.map((l) => {
-          const isChecked = visibility[l.key];
+          const isChecked = Boolean(visibility[l.key]);
           return (
             <label
               key={l.key}

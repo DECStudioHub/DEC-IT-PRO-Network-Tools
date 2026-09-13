@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { ActiveTool, VisibilitySettings, StoreInfo } from '../types';
+import { ActiveTool, VisibilitySettings } from '../types';
 import {
   Upload,
   Server,
@@ -18,11 +18,11 @@ import {
   ZoomOut,
   RotateCcw,
   Maximize2,
+  Minimize2,
   Crosshair,
   Save,
   FolderOpen,
   Download,
-  FileUp,
   Printer,
   Eye,
   Ruler,
@@ -31,11 +31,14 @@ import {
   ChevronDown,
   PanelRightClose,
   PanelRightOpen,
-  SlidersHorizontal,
   Undo2,
   Redo2,
   FileDown,
   FilePlus,
+  Coffee,
+  History,
+  MoreHorizontal,
+  Check,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -76,6 +79,12 @@ interface ToolbarProps {
   onCancelCableDrawing?: () => void;
   isSidebarOpen: boolean;
   onToggleSidebar: () => void;
+  onOpenWelcome?: () => void;
+  onOpenSupport?: () => void;
+  onResetAllItems?: () => void;
+  onOpenWhatsNew?: () => void;
+  isExpandedWorkspace?: boolean;
+  onToggleExpandedWorkspace?: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -116,11 +125,16 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onCancelCableDrawing,
   isSidebarOpen,
   onToggleSidebar,
+  onOpenWelcome,
+  onOpenSupport,
+  onResetAllItems,
+  onOpenWhatsNew,
+  isExpandedWorkspace = false,
+  onToggleExpandedWorkspace,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showVisDropdown, setShowVisDropdown] = useState(false);
-  const [showProjectDropdown, setShowProjectDropdown] = useState(false);
-  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showMoreDropdown, setShowMoreDropdown] = useState(false);
 
   const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -138,7 +152,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 flex flex-wrap items-center justify-between gap-1.5 border-b border-slate-200 bg-white/95 px-3 py-2 shadow-xs backdrop-blur-md">
+    <div className="no-print relative z-30 flex h-10 w-full items-center justify-between border-b border-slate-200 bg-white px-2.5 shadow-2xs select-none shrink-0 overflow-x-auto">
       {/* Hidden JSON File Input */}
       <input
         type="file"
@@ -148,59 +162,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         className="hidden"
       />
 
-      {/* Brand & Left: FILE & HISTORY GROUPS */}
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 mr-1">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white shadow-xs">
-            <Radio className="h-4 w-4 text-emerald-400" />
-          </div>
-          <div className="hidden sm:block">
-            <div className="text-xs font-black tracking-tight text-slate-900 leading-tight">
-              STORE WIFI HITMAP
-            </div>
-            <div className="text-[10px] text-slate-500 font-medium">Network Planner</div>
-          </div>
-        </div>
-
-        {/* UNDO / REDO GROUP (#23, #33) */}
-        <div className="flex items-center gap-0.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
-          <button
-            onClick={onUndo}
-            disabled={!canUndo}
-            title="Undo — Ctrl+Z (Cmd+Z)"
-            aria-label="Undo"
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
-              canUndo
-                ? 'text-slate-700 hover:bg-white hover:text-slate-900 cursor-pointer'
-                : 'text-slate-300 cursor-not-allowed'
-            }`}
-          >
-            <Undo2 className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">Undo</span>
-          </button>
-          <button
-            onClick={onRedo}
-            disabled={!canRedo}
-            title="Redo — Ctrl+Y (Cmd+Shift+Z)"
-            aria-label="Redo"
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
-              canRedo
-                ? 'text-slate-700 hover:bg-white hover:text-slate-900 cursor-pointer'
-                : 'text-slate-300 cursor-not-allowed'
-            }`}
-          >
-            <Redo2 className="h-3.5 w-3.5" />
-            <span className="hidden xl:inline">Redo</span>
-          </button>
-        </div>
-
-        {/* Group: FILE (#15, #16, #17, #19) */}
-        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
+      {/* LEFT: COMMAND GROUPS (FILE & TOOLS) */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* GROUP 1 — FILE */}
+        <div className="flex items-center gap-0.5">
           {onNewProject && (
             <button
               onClick={onNewProject}
-              title="New Clean Project (Start fresh site survey)"
-              className="flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 transition-colors shrink-0"
+              title="New Project (Clean workspace)"
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
             >
               <FilePlus className="h-3.5 w-3.5 text-slate-600" />
               <span className="hidden sm:inline">New</span>
@@ -210,370 +180,228 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <button
             onClick={onUploadClick}
             title="Upload Floor Plan (PNG, JPG, PDF)"
-            className="flex items-center gap-1 rounded-md bg-blue-600 hover:bg-blue-700 px-2.5 py-1 text-xs font-semibold text-white shadow-2xs transition-colors shrink-0"
+            className="flex items-center gap-1 rounded bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 text-xs font-bold transition-colors cursor-pointer border border-blue-200/60"
           >
-            <Upload className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Upload Plan</span>
+            <Upload className="h-3.5 w-3.5 text-blue-600" />
+            <span className="hidden sm:inline">Upload Plan</span>
           </button>
 
           {!hasFloorPlan && (
             <button
               onClick={onLoadSample}
               title="Load Sample Retail Store Floor Plan"
-              className="flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 transition-colors shrink-0"
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 transition-colors cursor-pointer border border-amber-200"
             >
-              <Sparkles className="h-3 w-3 text-amber-500" />
+              <Sparkles className="h-3 w-3 text-amber-600" />
               <span>Sample</span>
             </button>
           )}
-
-          {/* SAVE BUTTON (#15, #16, #35) */}
-          <button
-            onClick={onSaveProject}
-            disabled={isSaving}
-            title="Save Project (Updates saved project file & last modified date)"
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-bold transition-all shadow-2xs ${
-              saveStatus === 'saving' || isSaving
-                ? 'bg-amber-500 text-white cursor-wait opacity-90'
-                : saveStatus === 'saved'
-                ? 'bg-emerald-600 text-white shadow-emerald-500/20'
-                : isDirty
-                ? 'bg-indigo-600 hover:bg-indigo-700 text-white ring-1 ring-indigo-400'
-                : 'bg-slate-700 hover:bg-slate-800 text-white'
-            }`}
-          >
-            <Save className={`h-3.5 w-3.5 ${isSaving ? 'animate-spin' : ''}`} />
-            <span>
-              {isSaving || saveStatus === 'saving'
-                ? 'Saving...'
-                : saveStatus === 'saved'
-                ? '✓ Saved'
-                : 'Save'}
-            </span>
-            {isDirty && saveStatus !== 'saved' && (
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse" title="Unsaved changes" />
-            )}
-          </button>
-
-          {/* SAVE AS BUTTON (#17) */}
-          <button
-            onClick={onSaveAsProject}
-            title="Save As (Download editable .project file with custom name)"
-            className="flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 transition-colors shrink-0"
-          >
-            <FileDown className="h-3.5 w-3.5 text-indigo-600" />
-            <span className="hidden sm:inline">Save As</span>
-          </button>
-
-          {/* LOAD PROJECT BUTTON (#19) */}
-          <button
-            onClick={onLoadProject}
-            title="Load Project File (.project / .json)"
-            className="flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700 transition-colors shrink-0"
-          >
-            <FolderOpen className="h-3.5 w-3.5 text-amber-600" />
-            <span className="hidden lg:inline">Load Project</span>
-          </button>
-
-          {/* EXPANDABLE EXPORT OPTIONS DROPDOWN (#38, #170) */}
-          <div className="relative">
-            <button
-              onClick={() => setShowExportDropdown(!showExportDropdown)}
-              title="Export Options (PNG Image / PDF Report)"
-              className="flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-2xs transition-colors"
-            >
-              <Download className="h-3.5 w-3.5 text-indigo-600" />
-              <span>Export</span>
-              <ChevronDown className="h-3 w-3 text-slate-400" />
-            </button>
-
-            {showExportDropdown && (
-              <div
-                onMouseLeave={() => setShowExportDropdown(false)}
-                className="absolute left-0 top-full mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100 text-xs"
-              >
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
-                  EXPORT FORMAT (#38)
-                </div>
-
-                <button
-                  onClick={() => {
-                    setShowExportDropdown(false);
-                    if (onOpenExportModal) {
-                      onOpenExportModal('png');
-                    } else {
-                      onExportPng();
-                    }
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-indigo-50/70 text-slate-800 text-left font-semibold transition-colors"
-                >
-                  <span className="text-base leading-none">🖼</span>
-                  <div>
-                    <span className="block text-xs font-bold text-slate-900">PNG Image</span>
-                    <span className="text-[10px] text-slate-500 font-normal">High-res floor plan</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowExportDropdown(false);
-                    if (onOpenExportModal) {
-                      onOpenExportModal('pdf');
-                    }
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-indigo-50/70 text-slate-800 text-left font-semibold transition-colors"
-                >
-                  <span className="text-base leading-none">📄</span>
-                  <div>
-                    <span className="block text-xs font-bold text-slate-900">PDF Report</span>
-                    <span className="text-[10px] text-slate-500 font-normal">Multi-page survey audit</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowExportDropdown(false);
-                    if (onOpenExportModal) {
-                      onOpenExportModal('both');
-                    }
-                  }}
-                  className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-indigo-50/70 text-slate-800 text-left font-semibold transition-colors"
-                >
-                  <span className="text-base leading-none">📦</span>
-                  <div>
-                    <span className="block text-xs font-bold text-slate-900">Both PNG + PDF</span>
-                    <span className="text-[10px] text-slate-500 font-normal">Full survey documentation</span>
-                  </div>
-                </button>
-
-                <div className="border-t border-slate-100 my-1" />
-
-                <button
-                  onClick={() => setShowExportDropdown(false)}
-                  className="w-full text-center py-1 text-[11px] font-medium text-slate-400 hover:text-slate-600 rounded"
-                >
-                  [ Cancel ]
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* PROMINENT PRINT REPORT BUTTON (#104) */}
-          <button
-            onClick={onPrint}
-            disabled={isPreparingPrint}
-            title="Print Store WiFi & Infrastructure Report (A4 Landscape)"
-            className="flex items-center gap-1 rounded-md bg-slate-900 hover:bg-black text-white px-2.5 py-1 text-xs font-semibold shadow-2xs transition-colors"
-          >
-            <Printer className="h-3.5 w-3.5 text-blue-400" />
-            <span>{isPreparingPrint ? 'Preparing...' : 'Print'}</span>
-          </button>
-
-          <button
-            onClick={onOpenStoreInfo}
-            title="Store Information"
-            className="flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors"
-          >
-            <Building2 className="h-3.5 w-3.5 text-slate-500" />
-            <span className="hidden 2xl:inline">Store</span>
-          </button>
         </div>
-      </div>
 
-      {/* Center: ADD & EDIT GROUPS */}
-      <div className="flex items-center gap-1 overflow-x-auto py-0.5">
-        {/* ADD GROUP */}
-        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
+        {/* Separator */}
+        <div className="h-5 w-[1px] bg-slate-200 mx-1" />
+
+        {/* GROUP 2 — TOOLS (Primary priority) */}
+        <div className="flex items-center gap-0.5 bg-slate-50 p-0.5 rounded-lg border border-slate-200">
+          {/* SELECT */}
           <button
             onClick={() => setActiveTool('select')}
-            title="Select & Reposition Tool"
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+            title="Select & Pan Tool (V)"
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
               activeTool === 'select'
-                ? 'bg-slate-900 text-white shadow-2xs'
-                : 'text-slate-700 hover:bg-white'
+                ? 'bg-slate-900 text-white shadow-2xs ring-1 ring-slate-800'
+                : 'text-slate-700 hover:bg-white hover:text-slate-900'
             }`}
           >
             <MousePointer className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Select</span>
+            <span>Select</span>
           </button>
 
-          <button
-            onClick={() => setActiveTool('add-mdf')}
-            title="Add MDF (Server Cabinet)"
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
-              activeTool === 'add-mdf'
-                ? 'bg-blue-600 text-white shadow-2xs'
-                : 'text-blue-700 bg-blue-50/80 hover:bg-white'
-            }`}
-          >
-            <Server className="h-3.5 w-3.5" />
-            <span>MDF</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTool('add-idf')}
-            title="Add IDF (Switch Hub for Selling Area)"
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
-              activeTool === 'add-idf'
-                ? 'bg-teal-600 text-white shadow-2xs'
-                : 'text-teal-700 bg-teal-50/80 hover:bg-white'
-            }`}
-          >
-            <Network className="h-3.5 w-3.5" />
-            <span>IDF</span>
-          </button>
-
+          {/* AP */}
           <button
             onClick={() => setActiveTool('add-ap')}
-            title="Add Wireless Access Point"
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
+            title="Add Wireless Access Point (A)"
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
               activeTool === 'add-ap'
-                ? 'bg-emerald-600 text-white shadow-2xs'
-                : 'text-emerald-700 bg-emerald-50/80 hover:bg-white'
+                ? 'bg-emerald-600 text-white shadow-2xs ring-1 ring-emerald-500'
+                : 'text-emerald-700 hover:bg-emerald-50'
             }`}
           >
-            <Radio className="h-3.5 w-3.5" />
+            <Radio className="h-3.5 w-3.5 text-emerald-600 active-text-white" />
             <span>AP</span>
           </button>
 
+          {/* MDF */}
           <button
-            onClick={() => setActiveTool('add-signal')}
-            title="Add WiFi Signal Reading (0–100)"
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors ${
-              activeTool === 'add-signal'
-                ? 'bg-slate-900 text-white shadow-2xs'
-                : 'text-slate-800 bg-slate-100 hover:bg-white'
+            onClick={() => setActiveTool('add-mdf')}
+            title="Add MDF Server Cabinet (M)"
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
+              activeTool === 'add-mdf'
+                ? 'bg-blue-600 text-white shadow-2xs ring-1 ring-blue-500'
+                : 'text-blue-700 hover:bg-blue-50'
             }`}
           >
-            <Activity className="h-3.5 w-3.5 text-emerald-600" />
+            <Server className="h-3.5 w-3.5 text-blue-600" />
+            <span>MDF</span>
+          </button>
+
+          {/* IDF */}
+          <button
+            onClick={() => setActiveTool('add-idf')}
+            title="Add IDF Switch Hub (I)"
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
+              activeTool === 'add-idf'
+                ? 'bg-teal-600 text-white shadow-2xs ring-1 ring-teal-500'
+                : 'text-teal-700 hover:bg-teal-50'
+            }`}
+          >
+            <Network className="h-3.5 w-3.5 text-teal-600" />
+            <span>IDF</span>
+          </button>
+
+          {/* READING */}
+          <button
+            onClick={() => setActiveTool('add-signal')}
+            title="Add WiFi Signal Reading dBm (R)"
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
+              activeTool === 'add-signal'
+                ? 'bg-slate-900 text-white shadow-2xs ring-1 ring-slate-800'
+                : 'text-slate-800 hover:bg-slate-200'
+            }`}
+          >
+            <Activity className="h-3.5 w-3.5 text-amber-500" />
             <span>Reading</span>
           </button>
 
+          {/* LAN CABLE */}
           <button
             onClick={() => setActiveTool('add-cable')}
-            title="Add LAN Cable Route (Connect devices & enter meters)"
-            className={`flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+            title="Add LAN Cable Route (C)"
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
               activeTool === 'add-cable'
-                ? 'bg-indigo-600 text-white shadow-2xs ring-2 ring-indigo-400/50'
-                : 'text-indigo-700 bg-indigo-50 hover:bg-white'
+                ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-500'
+                : 'text-indigo-700 hover:bg-indigo-50'
             }`}
           >
-            <Cable className="h-3.5 w-3.5" />
-            <span>Add LAN Cable</span>
+            <Cable className="h-3.5 w-3.5 text-indigo-600" />
+            <span className="hidden sm:inline">LAN Cable</span>
+            <span className="sm:hidden">Cable</span>
+          </button>
+
+          {/* DELETE */}
+          <button
+            onClick={() => setActiveTool('delete')}
+            title="Delete Mode (D)"
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
+              activeTool === 'delete'
+                ? 'bg-rose-600 text-white shadow-2xs ring-1 ring-rose-500'
+                : 'text-rose-600 hover:bg-rose-50'
+            }`}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span>Delete</span>
+          </button>
+
+          {/* SCALE CALIBRATION */}
+          <button
+            onClick={onOpenScaleModal}
+            title="Calibrate Floor Plan Scale for Distance Measurement"
+            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer"
+          >
+            <Ruler className="h-3.5 w-3.5 text-amber-600" />
+            <span className="hidden md:inline">Scale</span>
           </button>
         </div>
 
-        {/* Cable Drawing Assistant Banner */}
+        {/* IN-PROGRESS CABLE DRAWING HELPER */}
         {activeCableDrawing && (
-          <div className="flex items-center gap-2 px-2.5 py-1 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-900 animate-pulse">
-            <Cable className="h-3.5 w-3.5 text-indigo-600 shrink-0" />
-            <span className="font-semibold hidden lg:inline">Drawing Route:</span>
+          <div className="flex items-center gap-2 px-2.5 py-0.5 bg-indigo-50 border border-indigo-200 rounded-md text-xs text-indigo-900 animate-pulse">
+            <Cable className="h-3 w-3 text-indigo-600 shrink-0" />
+            <span className="font-semibold text-[11px] hidden sm:inline">Drawing Cable:</span>
             <button
               onClick={onFinishCableDrawing}
-              className="bg-indigo-600 text-white font-bold px-2 py-0.5 rounded text-[11px] hover:bg-indigo-700"
+              className="bg-indigo-600 text-white font-bold px-2 py-0.5 rounded text-[10.5px] hover:bg-indigo-700 cursor-pointer"
             >
               Done
             </button>
             <button
               onClick={onCancelCableDrawing}
-              className="text-slate-600 hover:text-slate-900 text-[11px] underline"
+              className="text-slate-600 hover:text-slate-900 text-[10.5px] underline cursor-pointer"
             >
               Cancel
             </button>
           </div>
         )}
-
-        {/* EDIT GROUP */}
-        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-200">
-          <button
-            onClick={() => setActiveTool('delete')}
-            title="Delete Item Mode"
-            className={`flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-              activeTool === 'delete'
-                ? 'bg-rose-600 text-white shadow-2xs'
-                : 'text-rose-600 hover:bg-white'
-            }`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Delete</span>
-          </button>
-
-          <button
-            onClick={onOpenScaleModal}
-            title="Calibrate Floor Plan Scale for Distance Estimation"
-            className="flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 transition-colors"
-          >
-            <Ruler className="h-3.5 w-3.5 text-amber-600" />
-            <span className="hidden xl:inline">Scale</span>
-          </button>
-        </div>
       </div>
 
-      {/* Right: VIEW GROUP (#89, #94: [ - ], [ 75% ], [ + ], [ Fit ], [ Center ], [ Reset ], [ Layers ]) */}
-      <div className="flex items-center gap-1.5">
-        <div className="flex items-center bg-slate-50 p-1 rounded-lg border border-slate-200 gap-1">
-          {/* Zoom controls */}
+      {/* RIGHT: VIEW & SYSTEM GROUPS */}
+      <div className="flex items-center gap-1 shrink-0 ml-2">
+        {/* GROUP 3 — VIEW */}
+        <div className="flex items-center gap-0.5 bg-slate-50 p-0.5 rounded-lg border border-slate-200">
+          {/* Zoom Out */}
           <button
             onClick={onZoomOut}
             title="Zoom Out (−)"
-            className="rounded p-1 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
+            className="rounded p-1 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors cursor-pointer"
           >
             <ZoomOut className="h-3.5 w-3.5" />
           </button>
 
-          <span className="px-1 text-xs font-mono font-bold text-slate-800 min-w-[38px] text-center">
+          {/* Zoom Level */}
+          <span className="px-1 text-xs font-mono font-bold text-slate-800 min-w-[36px] text-center select-none">
             {Math.round(zoom * 100)}%
           </span>
 
+          {/* Zoom In */}
           <button
             onClick={onZoomIn}
             title="Zoom In (+)"
-            className="rounded p-1 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors"
+            className="rounded p-1 text-slate-600 hover:bg-white hover:text-slate-900 transition-colors cursor-pointer"
           >
             <ZoomIn className="h-3.5 w-3.5" />
           </button>
 
-          <div className="h-4 w-[1px] bg-slate-300 mx-0.5" />
+          <div className="h-3.5 w-[1px] bg-slate-300 mx-0.5" />
 
-          {/* FIT FLOOR PLAN (#77, #94) */}
+          {/* FIT */}
           <button
             onClick={onFitFloorPlan}
-            title="Fit Floor Plan to Screen (Auto-zoom to fit available workspace)"
-            className="flex items-center gap-1 rounded-md bg-white hover:bg-slate-100 border border-slate-200 px-2 py-1 text-xs font-bold text-slate-800 transition-colors shadow-2xs"
+            title="Fit Floor Plan to Screen"
+            className="flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer"
           >
             <Maximize2 className="h-3 w-3 text-blue-600" />
-            <span>Fit</span>
+            <span className="hidden sm:inline">Fit</span>
           </button>
 
-          {/* CENTER FLOOR PLAN (#94) */}
+          {/* CENTER */}
           <button
             onClick={onCenterFloorPlan}
-            title="Center Floor Plan in Workspace"
-            className="flex items-center gap-1 rounded-md bg-white hover:bg-slate-100 border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 transition-colors shadow-2xs"
+            title="Center Floor Plan"
+            className="flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer"
           >
             <Crosshair className="h-3 w-3 text-emerald-600" />
-            <span className="hidden sm:inline">Center</span>
+            <span className="hidden md:inline">Center</span>
           </button>
 
-          {/* RESET VIEW (#94) */}
+          {/* RESET VIEW */}
           <button
             onClick={onResetView}
-            title="Reset View to 100% Zoom"
-            className="flex items-center gap-1 rounded-md bg-white hover:bg-slate-100 border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 transition-colors shadow-2xs"
+            title="Reset View (100% Zoom)"
+            className="flex items-center gap-1 rounded px-1.5 py-1 text-xs font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer"
           >
             <RotateCcw className="h-3 w-3 text-slate-500" />
-            <span className="hidden sm:inline">Reset</span>
+            <span className="hidden md:inline">Reset</span>
           </button>
 
-          {/* LAYERS MENU (#90) */}
+          {/* LAYERS DROPDOWN */}
           <div className="relative">
             <button
               onClick={() => setShowVisDropdown(!showVisDropdown)}
-              title="Toggle Overlays and Cable Label Details"
-              className="flex items-center gap-1 rounded-md bg-white hover:bg-slate-100 border border-slate-200 px-2 py-1 text-xs font-medium text-slate-700 transition-colors shadow-2xs"
+              title="Toggle Independent Map Layers"
+              className="flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white transition-colors cursor-pointer"
             >
               <Eye className="h-3.5 w-3.5 text-slate-600" />
-              <span className="hidden md:inline">Layers</span>
+              <span>Layers</span>
               <ChevronDown className="h-3 w-3 text-slate-400" />
             </button>
 
@@ -593,7 +421,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     { key: 'showAps', label: 'Access Points (APs)' },
                     { key: 'showLanCables', label: 'LAN Cable Routes' },
                     { key: 'showLanLengths', label: 'Cable Badges & Lengths' },
-                    { key: 'showSignalValues', label: 'Signal Values (Black)' },
+                    { key: 'showSignalValues', label: 'Signal Values (dBm)' },
                     { key: 'showWifiBars', label: 'WiFi Signal Icons' },
                     { key: 'showHeatmap', label: 'Coverage Heatmap' },
                     { key: 'showLegend', label: 'Show Legend' },
@@ -602,24 +430,24 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     return (
                       <label
                         key={item.key}
-                        className="flex items-center justify-between px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer text-xs select-none"
+                        className="flex items-center justify-between px-2 py-1 rounded hover:bg-slate-50 cursor-pointer text-xs select-none"
                       >
                         <span className="text-slate-700 font-medium">{item.label}</span>
                         <input
                           type="checkbox"
                           checked={Boolean(visibility[k])}
                           onChange={() => toggleLayer(k)}
-                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5"
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-3.5 w-3.5 cursor-pointer"
                         />
                       </label>
                     );
                   })}
                 </div>
 
-                {/* Cable Label Detail options (#84) */}
+                {/* Cable Label Detail options */}
                 <div className="border-t border-slate-100 mt-2 pt-2">
                   <div className="px-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                    CABLE LABEL DISPLAY (#84)
+                    CABLE BADGE DISPLAY
                   </div>
                   <div className="grid grid-cols-3 gap-1">
                     {(['full', 'length-only', 'hidden'] as const).map((mode) => (
@@ -632,7 +460,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                             showLanLengths: mode !== 'hidden',
                           })
                         }
-                        className={`px-1.5 py-1 text-[10px] rounded font-semibold capitalize transition-colors ${
+                        className={`px-1.5 py-1 text-[10px] rounded font-semibold capitalize transition-colors cursor-pointer ${
                           visibility.cableLabelMode === mode
                             ? 'bg-indigo-600 text-white'
                             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -648,29 +476,204 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           </div>
         </div>
 
-        {/* COLLAPSIBLE SIDEBAR TOGGLE (#86) */}
-        <button
-          onClick={onToggleSidebar}
-          title={isSidebarOpen ? 'Hide Sidebar (Maximize floor plan workspace)' : 'Show Sidebar Panels'}
-          className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow-2xs border transition-colors ${
-            isSidebarOpen
-              ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200'
-              : 'bg-slate-900 hover:bg-black text-white border-transparent ring-2 ring-blue-400/40'
-          }`}
-        >
-          {isSidebarOpen ? (
-            <>
-              <PanelRightClose className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline">Hide Panels</span>
-            </>
-          ) : (
-            <>
-              <PanelRightOpen className="h-3.5 w-3.5" />
-              <span className="hidden lg:inline">Show Panels</span>
-            </>
+        {/* Separator */}
+        <div className="h-5 w-[1px] bg-slate-200 mx-1" />
+
+        {/* GROUP 4 — SYSTEM & WORKSPACE CONTROLS */}
+        <div className="flex items-center gap-1">
+          {/* UNDO */}
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Undo (Ctrl+Z)"
+            className={`rounded p-1 text-slate-700 transition-colors ${
+              canUndo
+                ? 'hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
+                : 'text-slate-300 cursor-not-allowed'
+            }`}
+          >
+            <Undo2 className="h-3.5 w-3.5" />
+          </button>
+
+          {/* REDO */}
+          <button
+            onClick={onRedo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Y)"
+            className={`rounded p-1 text-slate-700 transition-colors ${
+              canRedo
+                ? 'hover:bg-slate-100 hover:text-slate-900 cursor-pointer'
+                : 'text-slate-300 cursor-not-allowed'
+            }`}
+          >
+            <Redo2 className="h-3.5 w-3.5" />
+          </button>
+
+          {/* EXPAND WORKSPACE BUTTON */}
+          {onToggleExpandedWorkspace && (
+            <button
+              onClick={onToggleExpandedWorkspace}
+              title={isExpandedWorkspace ? 'Restore Normal Workspace Layout' : 'Expand Workspace (Maximize Editing Canvas)'}
+              className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-colors cursor-pointer ${
+                isExpandedWorkspace
+                  ? 'bg-blue-600 text-white shadow-2xs hover:bg-blue-700'
+                  : 'text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {isExpandedWorkspace ? (
+                <>
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  <span className="hidden xl:inline">Normal View</span>
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="h-3.5 w-3.5" />
+                  <span className="hidden xl:inline">Expand</span>
+                </>
+              )}
+            </button>
           )}
-        </button>
+
+          {/* HIDE / SHOW SIDEBAR PANELS */}
+          <button
+            onClick={onToggleSidebar}
+            title={isSidebarOpen ? 'Hide Side Panels (Expand canvas width)' : 'Show Side Panels'}
+            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold border transition-colors cursor-pointer ${
+              isSidebarOpen
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-200'
+                : 'bg-slate-900 hover:bg-black text-white border-transparent'
+            }`}
+          >
+            {isSidebarOpen ? (
+              <>
+                <PanelRightClose className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Hide Panels</span>
+              </>
+            ) : (
+              <>
+                <PanelRightOpen className="h-3.5 w-3.5" />
+                <span className="hidden md:inline">Show Panels</span>
+              </>
+            )}
+          </button>
+
+          {/* MORE OPTIONS DROPDOWN */}
+          <div className="relative">
+            <button
+              onClick={() => setShowMoreDropdown(!showMoreDropdown)}
+              title="More System & Project Tools"
+              className="rounded p-1 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors cursor-pointer"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+
+            {showMoreDropdown && (
+              <div
+                onMouseLeave={() => setShowMoreDropdown(false)}
+                className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100 text-xs"
+              >
+                <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 mb-1">
+                  MORE ACTIONS
+                </div>
+
+                {/* Reset All Items */}
+                {onResetAllItems && (
+                  <button
+                    onClick={() => {
+                      setShowMoreDropdown(false);
+                      onResetAllItems();
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 text-left font-semibold transition-colors cursor-pointer"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 text-rose-500" />
+                    <span>Reset All Items</span>
+                  </button>
+                )}
+
+                {/* Branch Info */}
+                <button
+                  onClick={() => {
+                    setShowMoreDropdown(false);
+                    onOpenStoreInfo();
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-700 hover:bg-slate-50 text-left font-semibold transition-colors cursor-pointer"
+                >
+                  <Building2 className="h-3.5 w-3.5 text-blue-500" />
+                  <span>Branch Information</span>
+                </button>
+
+                {/* Scale Calibration */}
+                <button
+                  onClick={() => {
+                    setShowMoreDropdown(false);
+                    onOpenScaleModal();
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-700 hover:bg-slate-50 text-left font-semibold transition-colors cursor-pointer"
+                >
+                  <Ruler className="h-3.5 w-3.5 text-amber-500" />
+                  <span>Calibrate Scale</span>
+                </button>
+
+                <div className="border-t border-slate-100 my-1" />
+
+                {/* Export Project JSON Backup */}
+                <button
+                  onClick={() => {
+                    setShowMoreDropdown(false);
+                    onExportProjectJson();
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-700 hover:bg-slate-50 text-left font-semibold transition-colors cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Export Project JSON</span>
+                </button>
+
+                {/* Import Project JSON Backup */}
+                <button
+                  onClick={() => {
+                    setShowMoreDropdown(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-700 hover:bg-slate-50 text-left font-semibold transition-colors cursor-pointer"
+                >
+                  <FolderOpen className="h-3.5 w-3.5 text-slate-500" />
+                  <span>Import Project JSON</span>
+                </button>
+
+                <div className="border-t border-slate-100 my-1" />
+
+                {/* What's New */}
+                {onOpenWhatsNew && (
+                  <button
+                    onClick={() => {
+                      setShowMoreDropdown(false);
+                      onOpenWhatsNew();
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-blue-600 hover:bg-blue-50 text-left font-semibold transition-colors cursor-pointer"
+                  >
+                    <History className="h-3.5 w-3.5 text-blue-500" />
+                    <span>What's New (v1.0.1)</span>
+                  </button>
+                )}
+
+                {/* Support DECStudio */}
+                {onOpenSupport && (
+                  <button
+                    onClick={() => {
+                      setShowMoreDropdown(false);
+                      onOpenSupport();
+                    }}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-amber-700 hover:bg-amber-50 text-left font-semibold transition-colors cursor-pointer"
+                  >
+                    <Coffee className="h-3.5 w-3.5 text-amber-500" />
+                    <span>Support DECStudio</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
-    </header>
+    </div>
   );
 };

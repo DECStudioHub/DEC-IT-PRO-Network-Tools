@@ -115,22 +115,36 @@ export const LanCableModal: React.FC<LanCableModalProps> = ({
     const parsedLength = parseFloat(lengthStr);
     const validLength = isNaN(parsedLength) || parsedLength <= 0 ? 1 : Math.round(parsedLength * 10) / 10;
 
-    const finalRoute = initialData?.route || route;
+    const rawRoute = initialData?.route || route || [];
+    const validRoute = rawRoute
+      .filter((p) => p && typeof p.x === 'number' && !isNaN(p.x) && typeof p.y === 'number' && !isNaN(p.y))
+      .map((p) => ({
+        x: Math.max(0, Math.min(1, p.x)),
+        y: Math.max(0, Math.min(1, p.y)),
+      }));
 
-    onSave({
-      id: cableId.trim(),
-      fromId: fromId || 'Custom-Point',
-      fromName: fromName || 'Start Point',
-      toId: toId || 'Custom-Point',
-      toName: toName || 'End Point',
-      length: validLength,
-      unit: 'meters',
-      cableType,
-      route: finalRoute,
-      notes: notes.trim() || undefined,
-      isEstimated: isEstimatedApplied,
-    });
-    onClose();
+    if (validRoute.length < 2) {
+      validRoute.push({ x: 0.2, y: 0.2 }, { x: 0.5, y: 0.5 });
+    }
+
+    try {
+      onSave({
+        id: cableId.trim().toUpperCase(),
+        fromId: fromId || 'Custom-Point',
+        fromName: fromName || 'Start Point',
+        toId: toId || 'Custom-Point',
+        toName: toName || 'End Point',
+        length: validLength,
+        unit: 'meters',
+        cableType,
+        route: validRoute,
+        notes: notes.trim() || undefined,
+        isEstimated: isEstimatedApplied,
+      });
+      onClose();
+    } catch (err) {
+      console.error('Error saving LAN cable:', err);
+    }
   };
 
   return (

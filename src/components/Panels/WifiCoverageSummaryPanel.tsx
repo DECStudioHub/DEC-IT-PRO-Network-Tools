@@ -74,34 +74,46 @@ export const WifiCoverageSummaryPanel: React.FC<WifiCoverageSummaryPanelProps> =
       </div>
 
       {/* Breakdown */}
-      <div className="space-y-1.5 mb-3">
-        <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/70 border border-emerald-100 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-600" />
-            <span className="font-semibold text-emerald-900">81–100 (3 Bars)</span>
-            <span className="text-emerald-700 text-[11px]">Excellent</span>
+      {totalReadings > 0 ? (
+        <div className="space-y-1.5 mb-3">
+          <div className="flex items-center justify-between p-2 rounded-lg bg-emerald-50/70 border border-emerald-100 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-600" />
+              <span className="font-semibold text-emerald-900">81–100 (3 Bars)</span>
+              <span className="text-emerald-700 text-[11px]">Excellent</span>
+            </div>
+            <span className="font-bold font-mono text-emerald-950">{excellentCount}</span>
           </div>
-          <span className="font-bold font-mono text-emerald-950">{excellentCount}</span>
-        </div>
 
-        <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50/70 border border-amber-100 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-amber-500" />
-            <span className="font-semibold text-amber-900">40–80 (2 Bars)</span>
-            <span className="text-amber-700 text-[11px]">Good / Moderate</span>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-amber-50/70 border border-amber-100 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span className="font-semibold text-amber-900">40–80 (2 Bars)</span>
+              <span className="text-amber-700 text-[11px]">Good / Moderate</span>
+            </div>
+            <span className="font-bold font-mono text-amber-950">{goodCount}</span>
           </div>
-          <span className="font-bold font-mono text-amber-950">{goodCount}</span>
-        </div>
 
-        <div className="flex items-center justify-between p-2 rounded-lg bg-rose-50/70 border border-rose-100 text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-rose-600" />
-            <span className="font-semibold text-rose-900">0–39 (1 Bar)</span>
-            <span className="text-rose-700 text-[11px]">Weak</span>
+          <div className="flex items-center justify-between p-2 rounded-lg bg-rose-50/70 border border-rose-100 text-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-rose-600" />
+              <span className="font-semibold text-rose-900">0–39 (1 Bar)</span>
+              <span className="text-rose-700 text-[11px]">Weak</span>
+            </div>
+            <span className="font-bold font-mono text-rose-950">{weakCount}</span>
           </div>
-          <span className="font-bold font-mono text-rose-950">{weakCount}</span>
         </div>
-      </div>
+      ) : (
+        <div className="rounded-lg bg-slate-50 border border-slate-200 p-3.5 text-center my-3">
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">
+            WIFI READINGS
+          </span>
+          <p className="text-xs font-semibold text-slate-700">No WiFi Readings Added</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            Add signal readings to analyze WiFi coverage.
+          </p>
+        </div>
+      )}
 
       {/* Coverage Attention or Status Alert (#31) */}
       {weakCount > 0 ? (

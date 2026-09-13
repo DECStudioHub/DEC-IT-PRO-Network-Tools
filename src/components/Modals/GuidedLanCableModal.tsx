@@ -11,6 +11,9 @@ import {
   FloorPlanDocument,
   FloorScale,
   ItemAppearance,
+  MDFDevice,
+  IDFDevice,
+  AccessPoint,
 } from '../../types';
 import { estimateRouteLengthInMeters } from '../../utils/distanceCalc';
 import {
@@ -44,12 +47,18 @@ interface GuidedLanCableModalProps {
   onClose: () => void;
   initialData?: LanCable | null;
   initialFromId?: string;
-  allDevices: DeviceItem[];
-  existingCables: LanCable[];
+  initialRoute?: LanCableRoutePoint[];
+  allDevices?: DeviceItem[];
+  mdfDevices?: MDFDevice[];
+  idfDevices?: IDFDevice[];
+  accessPoints?: AccessPoint[];
+  existingCables?: LanCable[];
   floorPlan: FloorPlanDocument | null;
   floorScale: FloorScale;
-  onSave: (cable: LanCable) => void;
+  onSave?: (cable: LanCable) => void;
+  onSaveCable?: (cable: LanCable) => void;
   onDelete?: (id: string) => void;
+  onDeleteCable?: (id: string) => void;
 }
 
 export const GuidedLanCableModal: React.FC<GuidedLanCableModalProps> = ({
@@ -57,15 +66,45 @@ export const GuidedLanCableModal: React.FC<GuidedLanCableModalProps> = ({
   onClose,
   initialData,
   initialFromId,
-  allDevices,
-  existingCables,
+  initialRoute,
+  allDevices: passedAllDevices,
+  mdfDevices = [],
+  idfDevices = [],
+  accessPoints = [],
+  existingCables = [],
   floorPlan,
   floorScale,
   onSave,
+  onSaveCable,
   onDelete,
+  onDeleteCable,
 }) => {
   // Step state: 1: From, 2: To, 3: Route Mode, 4: Details
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+
+  // Safely assemble devices if passedAllDevices is not provided (#224, #225)
+  const allDevices: DeviceItem[] = React.useMemo(() => {
+    if (passedAllDevices && Array.isArray(passedAllDevices) && passedAllDevices.length > 0) {
+      return passedAllDevices;
+    }
+    const items: DeviceItem[] = [];
+    (mdfDevices || []).forEach((d) => {
+      if (d && d.id && d.position && typeof d.position.x === 'number' && typeof d.position.y === 'number') {
+        items.push({ id: d.id, name: d.name || d.id, type: 'MDF', position: d.position });
+      }
+    });
+    (idfDevices || []).forEach((d) => {
+      if (d && d.id && d.position && typeof d.position.x === 'number' && typeof d.position.y === 'number') {
+        items.push({ id: d.id, name: d.name || d.id, type: 'IDF', position: d.position });
+      }
+    });
+    (accessPoints || []).forEach((d) => {
+      if (d && d.id && d.position && typeof d.position.x === 'number' && typeof d.position.y === 'number') {
+        items.push({ id: d.id, name: d.name || d.id, type: 'AP', position: d.position });
+      }
+    });
+    return items;
+  }, [passedAllDevices, mdfDevices, idfDevices, accessPoints]);
 
   // Form states
   const [fromId, setFromId] = useState('');
@@ -94,7 +133,7 @@ export const GuidedLanCableModal: React.FC<GuidedLanCableModalProps> = ({
       setStep(4); // Editing existing cable jumps to details
     } else {
       // Determine next auto ID
-      const nextNum = existingCables.length + 1;
+      const nextNum = (existingCables?.length || 0) + 1;
       const genId = `LAN-${String(nextNum).padStart(2, '0')}`;
       setCableId(genId);
 
@@ -113,14 +152,19 @@ export const GuidedLanCableModal: React.FC<GuidedLanCableModalProps> = ({
         setStep(1);
       }
 
-      setRouteMode('direct');
-      setRoutePoints([]);
+      if (initialRoute && initialRoute.length >= 2) {
+        setRoutePoints(initialRoute);
+        setRouteMode('custom');
+      } else {
+        setRouteMode('direct');
+        setRoutePoints([]);
+      }
       setCableType('CAT6');
       setLengthStr('25');
       setNotes('');
       setValidationError(null);
     }
-  }, [isOpen, initialData, initialFromId, allDevices, existingCables.length]);
+  }, [isOpen, initialData, initialFromId, initialRoute, allDevices, existingCables?.length]);
 
   if (!isOpen) return null;
 
@@ -204,26 +248,49 @@ export const GuidedLanCableModal: React.FC<GuidedLanCableModalProps> = ({
     e.preventDefault();
     setValidationError(null);
 
-    if (!cableId.trim()) {
-      setValidationError('Cable ID is required (e.g. LAN-01).');
+    if (!cableId || !cableId.trim()) {
+      setValidationError('Unable to save LAN Cable: Cable ID is required (e.g. LAN-01).');
+      return;
+    }
+
+    if (!fromId || !toId) {
+      setValidationError('Unable to save LAN Cable: Please select both a starting and destination device.');
       return;
     }
 
     if (fromId === toId) {
-      setValidationError('Starting device and destination cannot be identical.');
+      setValidationError('Unable to save LAN Cable: Starting device and destination cannot be identical.');
+      return;
+    }
+
+    const fromDev = allDevices.find((d) => d.id === fromId);
+    const toDev = allDevices.find((d) => d.id === toId);
+
+    if (!fromDev || !toDev) {
+      setValidationError('Unable to save LAN Cable: Selected devices could not be found.');
+      return;
+    }
+
+    if (
+      typeof fromDev.position?.x !== 'number' ||
+      typeof fromDev.position?.y !== 'number' ||
+      typeof toDev.position?.x !== 'number' ||
+      typeof toDev.position?.y !== 'number'
+    ) {
+      setValidationError('Unable to save LAN Cable: Device positions are not ready on floor plan.');
       return;
     }
 
     const lenNum = parseFloat(lengthStr);
     if (isNaN(lenNum) || lenNum <= 0) {
-      setValidationError('Please enter a valid cable length in meters.');
+      setValidationError('Unable to save LAN Cable: Please enter a valid cable length in meters.');
       return;
     }
 
     // Check duplicate ID if new cable
     if (!initialData) {
-      const dup = existingCables.some(
-        (c) => c.id.trim().toLowerCase() === cableId.trim().toLowerCase()
+      const dup = (existingCables || []).some(
+        (c) => c && c.id && c.id.trim().toLowerCase() === cableId.trim().toLowerCase()
       );
       if (dup) {
         setValidationError(`A cable with ID "${cableId}" already exists. Please choose another ID.`);
@@ -231,17 +298,32 @@ export const GuidedLanCableModal: React.FC<GuidedLanCableModalProps> = ({
       }
     }
 
-    const finalRoute =
-      routeMode === 'direct' || routePoints.length < 2
-        ? getDirectRoutePoints()
+    // Generate and strictly validate route points (#226)
+    const rawRoute =
+      routeMode === 'direct' || !routePoints || routePoints.length < 2
+        ? [
+            { x: fromDev.position.x, y: fromDev.position.y },
+            { x: toDev.position.x, y: toDev.position.y },
+          ]
         : routePoints;
 
-    const fromLabel = fromDevice
-      ? `${fromDevice.id} (${fromDevice.name})`
-      : fromId;
-    const toLabel = toDevice
-      ? `${toDevice.id} (${toDevice.name})`
-      : toId;
+    const validatedRoute: LanCableRoutePoint[] = rawRoute
+      .filter((p) => p && typeof p.x === 'number' && !isNaN(p.x) && typeof p.y === 'number' && !isNaN(p.y))
+      .map((p) => ({
+        x: Math.max(0, Math.min(1, p.x)),
+        y: Math.max(0, Math.min(1, p.y)),
+      }));
+
+    if (validatedRoute.length < 2) {
+      validatedRoute.length = 0;
+      validatedRoute.push(
+        { x: Math.max(0, Math.min(1, fromDev.position.x)), y: Math.max(0, Math.min(1, fromDev.position.y)) },
+        { x: Math.max(0, Math.min(1, toDev.position.x)), y: Math.max(0, Math.min(1, toDev.position.y)) }
+      );
+    }
+
+    const fromLabel = `${fromDev.id} (${fromDev.name})`;
+    const toLabel = `${toDev.id} (${toDev.name})`;
 
     const savedCable: LanCable = {
       id: cableId.trim().toUpperCase(),
@@ -249,18 +331,29 @@ export const GuidedLanCableModal: React.FC<GuidedLanCableModalProps> = ({
       fromName: fromLabel,
       toId,
       toName: toLabel,
-      length: lenNum,
+      length: Math.round(lenNum * 10) / 10,
       unit: 'meters',
       cableType,
-      route: finalRoute,
+      route: validatedRoute,
       notes: notes.trim() || undefined,
       isEstimated: routeMode === 'direct',
       labelOffset: initialData?.labelOffset,
       appearance: initialData?.appearance,
     };
 
-    onSave(savedCable);
-    onClose();
+    const saveFn = onSave || onSaveCable;
+    if (typeof saveFn === 'function') {
+      try {
+        saveFn(savedCable);
+        onClose();
+      } catch (err) {
+        console.error('Failed to save LAN Cable:', err);
+        setValidationError('Unable to save LAN Cable: Unexpected state update error.');
+      }
+    } else {
+      console.warn('No save handler provided to GuidedLanCableModal');
+      onClose();
+    }
   };
 
   const getDeviceIcon = (type: 'MDF' | 'IDF' | 'AP') => {
@@ -671,12 +764,12 @@ export const GuidedLanCableModal: React.FC<GuidedLanCableModalProps> = ({
               <ChevronLeft className="h-4 w-4" />
               Back
             </button>
-          ) : initialData && onDelete ? (
+          ) : initialData && (onDelete || onDeleteCable) ? (
             <button
               type="button"
               onClick={() => {
                 if (confirm(`Delete LAN Cable "${initialData.id}"?`)) {
-                  onDelete(initialData.id);
+                  (onDeleteCable || onDelete)?.(initialData.id);
                   onClose();
                 }
               }}

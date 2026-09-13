@@ -130,21 +130,26 @@ export async function generateAndDownloadPdfReport(
         doc.setFillColor(15, 23, 42); // slate-900
         doc.rect(0, 0, pageWidth, 55, 'F');
 
+        doc.setTextColor(56, 189, 248); // sky-400
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('DECSTUDIOAICREATION', 20, 17);
+
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(22);
-        doc.text('STORE WIFI HITMAP', 20, 24);
+        doc.setFontSize(20);
+        doc.text('WIFI HITMAP', 20, 27);
 
-        doc.setTextColor(56, 189, 248); // sky-400
-        doc.setFontSize(13);
+        doc.setTextColor(148, 163, 184); // slate-400
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        doc.text('WiFi Signal Strength & Network Infrastructure Plan', 20, 36);
+        doc.text('WiFi Signal Strength & Network Infrastructure Plan', 20, 37);
 
-        doc.setFontSize(9);
+        doc.setFontSize(8.5);
         doc.setTextColor(203, 213, 225); // slate-300
-        doc.text('Technical Site Survey & As-Built Verification Report', 20, 46);
+        doc.text('Technical Site Survey & Branch Infrastructure Report', 20, 47);
 
-        // Project Information Card (#167, #169)
+        // Project Information Card (#167, #169, #184)
         let y = 70;
         doc.setFillColor(248, 250, 252);
         doc.setDrawColor(226, 232, 240);
@@ -153,7 +158,7 @@ export async function generateAndDownloadPdfReport(
         doc.setTextColor(30, 41, 59);
         doc.setFontSize(13);
         doc.setFont('helvetica', 'bold');
-        doc.text('PROJECT & STORE DETAILS', 28, y + 14);
+        doc.text('PROJECT & BRANCH DETAILS', 28, y + 14);
 
         doc.setDrawColor(203, 213, 225);
         doc.line(28, y + 18, pageWidth - 28, y + 18);
@@ -163,24 +168,24 @@ export async function generateAndDownloadPdfReport(
         const col2 = pageWidth / 2 + 10;
         let lineY = y + 30;
 
-        // Store Name
+        // Branch Name
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(100, 116, 139);
-        doc.text('STORE NAME:', col1, lineY);
+        doc.text('BRANCH NAME:', col1, lineY);
         doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(11);
-        doc.text(storeInfo.storeName || 'N/A', col1, lineY + 6);
+        doc.text(storeInfo.branchName || storeInfo.storeName || 'N/A', col1, lineY + 6);
 
-        // Store Code
+        // Branch Code
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(100, 116, 139);
-        doc.text('STORE CODE / ID:', col2, lineY);
+        doc.text('BRANCH CODE / ID:', col2, lineY);
         doc.setTextColor(15, 23, 42);
         doc.setFontSize(11);
-        doc.text(storeInfo.storeCode || 'N/A', col2, lineY + 6);
+        doc.text(storeInfo.branchCode || storeInfo.storeCode || 'N/A', col2, lineY + 6);
 
         lineY += 20;
 
@@ -204,14 +209,14 @@ export async function generateAndDownloadPdfReport(
 
         lineY += 20;
 
-        // Created By (Technician)
+        // Prepared By (Technician)
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(100, 116, 139);
-        doc.text('CREATED BY (IT TECHNICIAN):', col1, lineY);
+        doc.text('PREPARED BY (IT SPECIALIST):', col1, lineY);
         doc.setTextColor(15, 23, 42);
-        doc.setFontSize(11);
-        const techPosition = storeInfo.technicianPosition || 'IT Technician';
+        doc.setFontSize(10.5);
+        const techPosition = storeInfo.position || storeInfo.technicianPosition || 'IT Infrastructure Operations';
         doc.text(`${storeInfo.preparedBy || 'IT Technician'} (${techPosition})`, col1, lineY + 6);
 
         // Assessment Date
@@ -220,10 +225,22 @@ export async function generateAndDownloadPdfReport(
         doc.setTextColor(100, 116, 139);
         doc.text('ASSESSMENT DATE:', col2, lineY);
         doc.setTextColor(15, 23, 42);
-        doc.setFontSize(11);
+        doc.setFontSize(10.5);
         doc.text(storeInfo.assessmentDate || new Date().toISOString().split('T')[0], col2, lineY + 6);
 
         lineY += 20;
+
+        // Acknowledged By (Branch Management) if available
+        if (storeInfo.acknowledgedBy) {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(100, 116, 139);
+          doc.text('ACKNOWLEDGED BY (BRANCH):', col1, lineY);
+          doc.setTextColor(15, 23, 42);
+          doc.setFontSize(9.5);
+          const ackPos = storeInfo.acknowledgedPosition || 'Branch Manager';
+          doc.text(`${storeInfo.acknowledgedBy} (${ackPos})`, col1, lineY + 5);
+        }
 
         // Creation Timestamps (#167, #181)
         doc.setFontSize(8.5);
@@ -231,7 +248,7 @@ export async function generateAndDownloadPdfReport(
         doc.setTextColor(100, 116, 139);
         const dateCreated = storeInfo.dateCreated || new Date().toLocaleDateString();
         const timeCreated = storeInfo.timeCreated || new Date().toLocaleTimeString();
-        doc.text(`Date Created: ${dateCreated} at ${timeCreated}`, col1, lineY + 4);
+        doc.text(`Date Created: ${dateCreated} at ${timeCreated}`, col2, lineY + 5);
         if (storeInfo.lastModified) {
           doc.text(`Last Modified: ${storeInfo.lastModified}`, col2, lineY + 4);
         }
@@ -644,11 +661,11 @@ export async function generateAndDownloadPdfReport(
     doc.setFontSize(7.5);
     doc.setTextColor(148, 163, 184); // slate-400
 
-    const storeTitle = storeInfo.storeName || 'Store WiFi Survey';
+    const branchTitle = storeInfo.branchName || storeInfo.storeName || 'Branch WiFi Survey';
     const techName = storeInfo.preparedBy || 'IT Technician';
-    const position = storeInfo.technicianPosition || 'IT Technician';
+    const position = storeInfo.position || storeInfo.technicianPosition || 'IT Infrastructure Operations';
 
-    doc.text(`STORE WIFI HITMAP  |  ${storeTitle}  |  Created by: ${techName} — ${position}`, 20, footerY);
+    doc.text(`DECStudioAiCreation • WIFI HITMAP  |  ${branchTitle}  |  Prepared by: ${techName} — ${position}`, 20, footerY);
     doc.text(`Page ${index + 1} of ${totalPages}`, pageWidth - 20, footerY, { align: 'right' });
   });
 

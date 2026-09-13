@@ -18,12 +18,16 @@ interface StoreInfoModalProps {
 
 const DEFAULT_STORE_INFO: StoreInfo = {
   storeName: '',
+  branchName: '',
   storeCode: '',
+  branchCode: '',
   location: '',
   floorArea: '',
   assessmentDate: new Date().toISOString().split('T')[0],
   preparedBy: '',
   technicianPosition: 'IT Technician',
+  acknowledgedBy: '',
+  acknowledgedPosition: 'Branch Manager',
   dateCreated: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
   timeCreated: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
   remarks: '',
@@ -41,7 +45,11 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
 
   const [formData, setFormData] = useState<StoreInfo>(() => ({
     ...initialSource,
+    branchName: initialSource.branchName || initialSource.storeName || '',
+    branchCode: initialSource.branchCode || initialSource.storeCode || '',
     technicianPosition: initialSource.technicianPosition || 'IT Technician',
+    acknowledgedBy: initialSource.acknowledgedBy || '',
+    acknowledgedPosition: initialSource.acknowledgedPosition || 'Branch Manager',
     dateCreated: initialSource.dateCreated || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
     timeCreated: initialSource.timeCreated || new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
   }));
@@ -51,7 +59,11 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
       const active = currentInfo || storeInfo || DEFAULT_STORE_INFO;
       setFormData({
         ...active,
+        branchName: active.branchName || active.storeName || '',
+        branchCode: active.branchCode || active.storeCode || '',
         technicianPosition: active.technicianPosition || 'IT Technician',
+        acknowledgedBy: active.acknowledgedBy || '',
+        acknowledgedPosition: active.acknowledgedPosition || 'Branch Manager',
         dateCreated: active.dateCreated || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
         timeCreated: active.timeCreated || new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       });
@@ -62,8 +74,14 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const bName = formData.branchName || formData.storeName;
+    const bCode = formData.branchCode || formData.storeCode;
     const updated: StoreInfo = {
       ...formData,
+      storeName: bName,
+      branchName: bName,
+      storeCode: bCode,
+      branchCode: bCode,
       lastModified: new Date().toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
@@ -84,8 +102,8 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
               <Building2 className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold tracking-tight text-white">PROJECT DETAILS & STORE INFO</h2>
-              <p className="text-xs text-slate-300">Survey Metadata & Inspector Information for Exports</p>
+              <h2 className="text-base font-bold tracking-tight text-white">PROJECT DETAILS & BRANCH INFO</h2>
+              <p className="text-xs text-slate-300">Survey Metadata, Inspector & Acknowledgment Information</p>
             </div>
           </div>
           <button
@@ -97,39 +115,39 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-          {/* SECTION 1: STORE INFORMATION (#167, #169) */}
+          {/* SECTION 1: BRANCH INFORMATION */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 pb-1 border-b border-slate-200">
               <Building2 className="h-4 w-4 text-blue-600" />
               <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Store Information
+                Branch Information
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Store Name *
+                  Branch Name *
                 </label>
                 <input
                   type="text"
                   required
-                  value={formData.storeName}
-                  onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
-                  placeholder="e.g. ABC STORE"
+                  value={formData.branchName ?? formData.storeName}
+                  onChange={(e) => setFormData({ ...formData, branchName: e.target.value, storeName: e.target.value })}
+                  placeholder="e.g. ABC Branch"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Store Code / ID *
+                  Branch Code / ID *
                 </label>
                 <input
                   type="text"
                   required
-                  value={formData.storeCode}
-                  onChange={(e) => setFormData({ ...formData, storeCode: e.target.value })}
-                  placeholder="e.g. STR-001"
+                  value={formData.branchCode ?? formData.storeCode}
+                  onChange={(e) => setFormData({ ...formData, branchCode: e.target.value, storeCode: e.target.value })}
+                  placeholder="e.g. BR-001"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
                 />
               </div>
@@ -138,14 +156,14 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Store Location / Area *
+                  Branch Location / Area *
                 </label>
                 <input
                   type="text"
                   required
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  placeholder="e.g. Selling Area / Promenade"
+                  placeholder="e.g. Selling Area / Ground Floor"
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
                 />
               </div>
@@ -164,19 +182,19 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
             </div>
           </div>
 
-          {/* SECTION 2: TECHNICIAN INFORMATION (#167, #169) */}
+          {/* SECTION 2: TECHNICIAN & ACKNOWLEDGMENT INFORMATION (#194) */}
           <div className="space-y-3">
             <div className="flex items-center gap-1.5 pb-1 border-b border-slate-200">
               <User className="h-4 w-4 text-indigo-600" />
               <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                Technician Information
+                Inspector & Verification Information
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
-                  Created By (Inspector Name) *
+                  Prepared By (Inspector Name) *
                 </label>
                 <input
                   type="text"
@@ -201,6 +219,34 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
               </div>
             </div>
 
+            {/* Acknowledged By & Position fields (#194) */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                  Acknowledged By (Branch Rep)
+                </label>
+                <input
+                  type="text"
+                  value={formData.acknowledgedBy || ''}
+                  onChange={(e) => setFormData({ ...formData, acknowledgedBy: e.target.value })}
+                  placeholder="e.g. Maria Santos"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                  Acknowledged Position
+                </label>
+                <input
+                  type="text"
+                  value={formData.acknowledgedPosition || ''}
+                  onChange={(e) => setFormData({ ...formData, acknowledgedPosition: e.target.value })}
+                  placeholder="e.g. Branch Manager"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
                 Assessment Date
@@ -214,7 +260,7 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
             </div>
           </div>
 
-          {/* SECTION 3: AUTOMATIC DATE AUDITING (#167, #181) */}
+          {/* SECTION 3: AUTOMATIC DATE AUDITING */}
           <div className="rounded-lg bg-slate-50 p-3.5 border border-slate-200 space-y-2 text-xs">
             <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
               Project Audit Timestamps
@@ -248,7 +294,7 @@ export const StoreInfoModal: React.FC<StoreInfoModalProps> = ({
               rows={2}
               value={formData.remarks || ''}
               onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-              placeholder="e.g. WiFi signal strength & network infrastructure survey for store opening."
+              placeholder="e.g. WiFi signal strength & network infrastructure survey for branch deployment."
               className="w-full rounded-lg border border-slate-300 px-3.5 py-2 text-sm focus:border-blue-600 focus:outline-none"
             />
           </div>

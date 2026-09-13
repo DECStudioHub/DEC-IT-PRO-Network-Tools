@@ -49,6 +49,10 @@ import { SaveAsModal } from './components/Modals/SaveAsModal';
 import { UnsavedChangesModal } from './components/Modals/UnsavedChangesModal';
 import { LoadErrorModal } from './components/Modals/LoadErrorModal';
 import { ExportModal } from './components/Modals/ExportModal';
+import { WelcomeScreen } from './components/WelcomeScreen';
+import { SupportModal } from './components/Modals/SupportModal';
+import { ResetAllItemsModal } from './components/Modals/ResetAllItemsModal';
+import { WhatsNewModal } from './components/Modals/WhatsNewModal';
 
 import {
   AlertCircle,
@@ -59,14 +63,27 @@ import {
 const STORAGE_KEY = 'store_wifi_hitmap_project';
 
 export const App: React.FC = () => {
-  // Store Information
+  // Welcome & Support UI States (#185, #191, #208)
+  // Welcome UI MUST show on every startup, refresh, and reload (#208)
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState<boolean>(true);
+  const [supportModalOpen, setSupportModalOpen] = useState<boolean>(false);
+  const [resetAllModalOpen, setResetAllModalOpen] = useState<boolean>(false);
+  const [whatsNewModalOpen, setWhatsNewModalOpen] = useState<boolean>(false);
+  const [hasSavedProject, setHasSavedProject] = useState<boolean>(false);
+
+  // Branch & Store Information (#184)
   const [storeInfo, setStoreInfo] = useState<StoreInfo>({
-    storeName: 'Downtown Flagship Superstore',
-    storeCode: 'STR-408',
-    location: 'Building B, Ground Floor, Central Retail Promenade',
+    storeName: 'Downtown Flagship Branch',
+    branchName: 'Downtown Flagship Branch',
+    storeCode: 'BR-408',
+    branchCode: 'BR-408',
+    location: 'Building B, Ground Floor, Central Commercial Complex',
     floorArea: '1,450 sq. meters',
     assessmentDate: new Date().toISOString().split('T')[0],
-    preparedBy: 'Dec IT Infrastructure Engineering Team',
+    preparedBy: 'Field IT Infrastructure Engineer',
+    position: 'IT Infrastructure Specialist',
+    acknowledgedBy: 'Branch Operations Lead',
+    acknowledgedPosition: 'Branch General Manager',
     remarks: 'Pre-deployment WiFi coverage assessment & LAN cable route planning.',
   });
 
@@ -307,13 +324,14 @@ export const App: React.FC = () => {
     recordHistoryAction('Move Device');
   }, [recordHistoryAction]);
 
-  // Pre-load sample floor plan on first launch if empty
+  // Initialize: Load saved project and ensure Welcome UI shows on startup (#185, #191, #208, #209, #210)
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as ProjectData;
         if (parsed.floorPlan) {
+          setHasSavedProject(true);
           setFloorPlan(parsed.floorPlan);
           const rawMdf = Array.isArray(parsed.mdfDevices) ? (parsed.mdfDevices as any[]).flat() : [];
           const rawIdf = Array.isArray(parsed.idfDevices) ? (parsed.idfDevices as any[]).flat() : [];
@@ -354,15 +372,14 @@ export const App: React.FC = () => {
           setCanRedo(false);
           setIsDirty(false);
           isDirtyRef.current = false;
-          return;
         }
       } catch (err) {
         console.error('Failed to parse saved project data:', err);
       }
     }
 
-    // Default: initialize realistic sample store floor plan (#92: Auto-fit on launch)
-    loadSampleData();
+    // Always keep Welcome UI active on initial app load / refresh (#208, #209)
+    setShowWelcomeScreen(true);
   }, []);
 
   // Keyboard Shortcuts for Undo (Ctrl+Z), Redo (Ctrl+Y / Ctrl+Shift+Z), Save (Ctrl+S) (#33)
@@ -515,9 +532,11 @@ export const App: React.FC = () => {
   // Start fresh blank project (#15, #19, #22)
   const executeNewProject = () => {
     const blankStoreInfo: StoreInfo = {
-      storeName: 'New Store Survey',
-      storeCode: 'STORE-01',
-      location: 'Site Location',
+      storeName: 'New Branch Survey',
+      branchName: 'New Branch Survey',
+      storeCode: 'BR-01',
+      branchCode: 'BR-01',
+      location: 'Branch Location',
       floorArea: '500 sq. meters',
       assessmentDate: new Date().toISOString().split('T')[0],
       preparedBy: 'IT Network Engineer',
@@ -553,6 +572,34 @@ export const App: React.FC = () => {
     setIsDirty(false);
     isDirtyRef.current = false;
     setSaveSuccessMessage('✓ Clean Project Initialized. Upload a floor plan to begin.');
+    setTimeout(() => setSaveSuccessMessage(null), 4000);
+  };
+
+  // Reset All Items Functionality (#219 - #222)
+  // Clears all MDF, IDF, APs, Readings, and Cables, but keeps floor plan, scale & branch info
+  const handleConfirmResetAllItems = () => {
+    setMdfDevices([]);
+    setIdfDevices([]);
+    setAccessPoints([]);
+    setSignalReadings([]);
+    setLanCables([]);
+    setCableDrawingRoute([]);
+    setEditingMdf(null);
+    setEditingIdf(null);
+    setEditingAp(null);
+    setEditingSignal(null);
+    setEditingCable(null);
+    setResetAllModalOpen(false);
+
+    recordHistoryAction('Reset All Items', {
+      mdfDevices: [],
+      idfDevices: [],
+      accessPoints: [],
+      signalReadings: [],
+      lanCables: [],
+    });
+
+    setSaveSuccessMessage('✓ All floor plan items reset. Floor plan, scale, and branch info preserved.');
     setTimeout(() => setSaveSuccessMessage(null), 4000);
   };
 
@@ -1222,6 +1269,10 @@ export const App: React.FC = () => {
           onCancelCableDrawing={handleCancelCableDrawing}
           isSidebarOpen={sidebarOpen}
           onToggleSidebar={handleToggleSidebar}
+          onOpenWelcome={() => setShowWelcomeScreen(true)}
+          onOpenSupport={() => setSupportModalOpen(true)}
+          onResetAllItems={() => setResetAllModalOpen(true)}
+          onOpenWhatsNew={() => setWhatsNewModalOpen(true)}
         />
       </div>
 
@@ -1359,6 +1410,7 @@ export const App: React.FC = () => {
             setCableDrawingRoute={setCableDrawingRoute}
             onFinishCableDrawing={handleFinishCableDrawing}
             onDragEnd={handleDragEnd}
+            onUploadFloorPlan={() => fileInputRef.current?.click()}
           />
         </div>
 
@@ -1691,6 +1743,51 @@ export const App: React.FC = () => {
         visibility={visibility}
         storeInfo={storeInfo}
         initialMode={exportModalMode}
+      />
+
+      {/* Reset All Items Confirmation Modal (#219 - #222) */}
+      <ResetAllItemsModal
+        isOpen={resetAllModalOpen}
+        onClose={() => setResetAllModalOpen(false)}
+        onConfirm={handleConfirmResetAllItems}
+      />
+
+      {/* What's New & Version History Modal (#236 - #244) */}
+      <WhatsNewModal
+        isOpen={whatsNewModalOpen}
+        onClose={() => setWhatsNewModalOpen(false)}
+      />
+
+      {/* Welcome Screen (#185, #191, #208, #209, #210) */}
+      {showWelcomeScreen && (
+        <WelcomeScreen
+          onEnterWorkspace={() => {
+            setShowWelcomeScreen(false);
+          }}
+          onLoadSampleProject={() => {
+            setShowWelcomeScreen(false);
+            loadSampleData();
+          }}
+          onUploadFloorPlan={() => {
+            setShowWelcomeScreen(false);
+            setTimeout(() => {
+              fileInputRef.current?.click();
+            }, 100);
+          }}
+          onOpenSupport={() => {
+            setSupportModalOpen(true);
+          }}
+          onOpenWhatsNew={() => {
+            setWhatsNewModalOpen(true);
+          }}
+          hasSavedProject={hasSavedProject}
+        />
+      )}
+
+      {/* Buy Me a Coffee / Support Modal (#186) */}
+      <SupportModal
+        isOpen={supportModalOpen}
+        onClose={() => setSupportModalOpen(false)}
       />
     </div>
   );

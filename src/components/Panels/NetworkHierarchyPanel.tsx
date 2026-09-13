@@ -179,9 +179,29 @@ export const NetworkHierarchyPanel: React.FC<NetworkHierarchyPanelProps> = ({
         })}
 
         {mdfDevices.length === 0 && (
-          <p className="text-xs text-slate-400 italic text-center py-2">
-            No MDF Server Cabinet added yet. Click "Add MDF" to place the core cabinet.
-          </p>
+          <div className="space-y-2 py-1">
+            <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-center">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">MDF</span>
+              <p className="text-xs font-semibold text-slate-700">No MDF Added</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">Click “Add MDF” to add a Server Cabinet.</p>
+            </div>
+
+            {idfDevices.length === 0 && (
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-center">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">IDF</span>
+                <p className="text-xs font-semibold text-slate-700">No IDF Added</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Click “Add IDF” to add a Switch Hub.</p>
+              </div>
+            )}
+
+            {accessPoints.length === 0 && (
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-3 text-center">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">ACCESS POINTS</span>
+                <p className="text-xs font-semibold text-slate-700">No Access Points Added</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Click “Add AP” to place a Wireless Access Point.</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

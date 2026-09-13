@@ -115,9 +115,11 @@ export const LanCableSummaryPanel: React.FC<LanCableSummaryPanelProps> = ({ cabl
           })}
 
         {totalCount === 0 && (
-          <p className="text-xs text-slate-400 italic py-2 text-center">
-            No LAN cable routes recorded yet. Click "Add LAN Cable" to measure a route.
-          </p>
+          <div className="rounded-lg bg-slate-50 border border-slate-200 p-3.5 text-center my-2">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-0.5">LAN CABLES</span>
+            <p className="text-xs font-semibold text-slate-700">No LAN Cables Added</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Create a connection between network devices.</p>
+          </div>
         )}
       </div>
     </div>
