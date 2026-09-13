@@ -1,0 +1,6 @@
+{
+  "name": "Store WiFi Hitmap & Network Planner",
+  "description": "Professional store WiFi hitmap, wireless coverage assessment, and network infrastructure planning tool with MDF/IDF cabinets and LAN cable length measurement.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
