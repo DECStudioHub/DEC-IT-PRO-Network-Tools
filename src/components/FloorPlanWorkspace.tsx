@@ -17,9 +17,18 @@ import {
   FloorScale,
   AppearanceSettings,
   ItemAppearance,
+  clampIconSize,
+  clampTextSize,
 } from '../types';
 import { renderHeatmapToCanvas } from '../utils/heatmapRenderer';
 import { WifiSignalIcon } from './WifiSignalIcon';
+import {
+  DeviceIconBox,
+  DeviceLabelBadge,
+  getMdfIconComponent,
+  getIdfIconComponent,
+  getApIconComponent,
+} from '../utils/deviceIcons';
 import {
   Server,
   HardDrive,
@@ -861,21 +870,13 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
 
         {/* Layer 4: Interactive HTML Overlays (MDF, IDF, AP, Signal Markers) */}
         <div className="absolute inset-0 pointer-events-none">
-          {/* MDF SERVER CABINET MARKERS (#56, #59, #68, #128, #136) */}
+          {/* MDF SERVER CABINET MARKERS (#56, #59, #68, #128, #136, v1.0.2) */}
           {visibility.showMdf &&
             mdfDevices.map((mdf) => {
               if (!mdf?.position || typeof mdf.position.x !== 'number') return null;
               const posX = mdf.position.x * planW;
               const posY = mdf.position.y * planH;
-
               const mdfApp = mdf.appearance || appearanceSettings?.defaultMdf || {};
-              const MdfIcon = getMdfIconComponent(mdfApp.iconStyle);
-              const iconBoxSize = mdfApp.iconSize || 40;
-              const iconGraphicSize = Math.round(iconBoxSize * 0.52);
-              const labelTextSize = mdfApp.textSize || 11;
-              const subTextSize = Math.max(7.5, labelTextSize - 2.5);
-              const accentColor = mdfApp.iconColor || '#60a5fa';
-              const outlineColor = mdfApp.borderColor || '#60a5fa';
 
               return (
                 <div
@@ -896,59 +897,29 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                       onSelectMdf(mdf);
                     }
                   }}
-                  className="interactive-marker group absolute pointer-events-auto flex flex-col items-center cursor-pointer select-none"
+                  className="interactive-marker group absolute pointer-events-auto flex flex-col items-center cursor-pointer select-none hover:scale-105 transition-transform"
                 >
-                  <div
-                    style={{
-                      width: `${iconBoxSize}px`,
-                      height: `${iconBoxSize}px`,
-                      borderColor: outlineColor,
-                    }}
-                    className="relative flex items-center justify-center rounded-xl bg-slate-900 border-2 text-white shadow-xl group-hover:scale-110 transition-transform"
-                  >
-                    <MdfIcon
-                      style={{ width: `${iconGraphicSize}px`, height: `${iconGraphicSize}px`, color: accentColor }}
-                    />
-                    <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
-                    <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  </div>
-
-                  <div
-                    style={{ borderColor: `${outlineColor}99` }}
-                    className="mt-1 flex flex-col items-center rounded bg-slate-950/90 backdrop-blur-xs px-2 py-0.5 border shadow-md text-center"
-                  >
-                    <span
-                      style={{ fontSize: `${labelTextSize}px` }}
-                      className="font-black font-mono tracking-wider text-white leading-tight"
-                    >
-                      {mdf.id}
-                    </span>
-                    <span
-                      style={{ fontSize: `${subTextSize}px`, color: accentColor }}
-                      className="font-extrabold tracking-tight uppercase leading-none"
-                    >
-                      SERVER CABINET
-                    </span>
-                  </div>
+                  <DeviceIconBox
+                    type="mdf"
+                    appearance={mdfApp}
+                  />
+                  <DeviceLabelBadge
+                    label={mdf.id}
+                    subLabel="SERVER CABINET"
+                    type="mdf"
+                    appearance={mdfApp}
+                  />
                 </div>
               );
             })}
 
-          {/* IDF SWITCH HUB MARKERS (#57, #60, #69, #128, #137) */}
+          {/* IDF SWITCH HUB MARKERS (#57, #60, #69, #128, #137, v1.0.2) */}
           {visibility.showIdf &&
             idfDevices.map((idf) => {
               if (!idf?.position || typeof idf.position.x !== 'number') return null;
               const posX = idf.position.x * planW;
               const posY = idf.position.y * planH;
-
               const idfApp = idf.appearance || appearanceSettings?.defaultIdf || {};
-              const IdfIcon = getIdfIconComponent(idfApp.iconStyle);
-              const iconBoxSize = idfApp.iconSize || 36;
-              const iconGraphicSize = Math.round(iconBoxSize * 0.52);
-              const labelTextSize = idfApp.textSize || 11;
-              const subTextSize = Math.max(7, labelTextSize - 3);
-              const accentColor = idfApp.iconColor || '#2dd4bf';
-              const outlineColor = idfApp.borderColor || '#2dd4bf';
 
               return (
                 <div
@@ -969,63 +940,29 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                       onSelectIdf(idf);
                     }
                   }}
-                  className="interactive-marker group absolute pointer-events-auto flex flex-col items-center cursor-pointer select-none"
+                  className="interactive-marker group absolute pointer-events-auto flex flex-col items-center cursor-pointer select-none hover:scale-105 transition-transform"
                 >
-                  <div
-                    style={{
-                      width: `${iconBoxSize}px`,
-                      height: `${iconBoxSize}px`,
-                      borderColor: outlineColor,
-                    }}
-                    className="relative flex items-center justify-center rounded-xl bg-teal-950 border-2 text-white shadow-xl group-hover:scale-110 transition-transform"
-                  >
-                    <IdfIcon
-                      style={{ width: `${iconGraphicSize}px`, height: `${iconGraphicSize}px`, color: accentColor }}
-                    />
-                    <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-teal-300" />
-                  </div>
-
-                  <div
-                    style={{ borderColor: `${outlineColor}99` }}
-                    className="mt-1 flex flex-col items-center rounded bg-teal-950/90 backdrop-blur-xs px-2 py-0.5 border shadow-md text-center"
-                  >
-                    <span
-                      style={{ fontSize: `${labelTextSize}px` }}
-                      className="font-black font-mono tracking-wider text-white leading-tight"
-                    >
-                      {idf.id}
-                    </span>
-                    <span
-                      style={{ fontSize: `${subTextSize}px`, color: accentColor }}
-                      className="font-extrabold tracking-tight uppercase leading-none"
-                    >
-                      SWITCH HUB
-                    </span>
-                    <span
-                      style={{ fontSize: `${Math.max(6.5, subTextSize - 1)}px`, color: accentColor }}
-                      className="font-semibold tracking-tight uppercase leading-none"
-                    >
-                      {idf.area || 'SELLING AREA'}
-                    </span>
-                  </div>
+                  <DeviceIconBox
+                    type="idf"
+                    appearance={idfApp}
+                  />
+                  <DeviceLabelBadge
+                    label={idf.id}
+                    subLabel={idf.area || 'SWITCH HUB'}
+                    type="idf"
+                    appearance={idfApp}
+                  />
                 </div>
               );
             })}
 
-          {/* ACCESS POINT MARKERS (#18, #19, #128, #138) */}
+          {/* ACCESS POINT MARKERS (#18, #19, #128, #138, v1.0.2) */}
           {visibility.showAps &&
             accessPoints.map((ap) => {
               if (!ap?.position || typeof ap.position.x !== 'number') return null;
               const posX = ap.position.x * planW;
               const posY = ap.position.y * planH;
-
               const apApp = ap.appearance || appearanceSettings?.defaultAp || {};
-              const ApIcon = getApIconComponent(apApp.iconStyle);
-              const iconBoxSize = apApp.iconSize || 32;
-              const iconGraphicSize = Math.round(iconBoxSize * 0.52);
-              const labelTextSize = apApp.textSize || 11;
-              const accentColor = apApp.iconColor || '#10b981';
-              const outlineColor = apApp.borderColor || '#ffffff';
 
               return (
                 <div
@@ -1046,26 +983,17 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                       onSelectAp(ap);
                     }
                   }}
-                  className="interactive-marker group absolute pointer-events-auto flex items-center gap-1.5 cursor-pointer select-none"
+                  className="interactive-marker group absolute pointer-events-auto flex items-center gap-1.5 cursor-pointer select-none hover:scale-105 transition-transform"
                 >
-                  <div
-                    style={{
-                      width: `${iconBoxSize}px`,
-                      height: `${iconBoxSize}px`,
-                      backgroundColor: accentColor,
-                      borderColor: outlineColor,
-                    }}
-                    className="flex items-center justify-center rounded-full border-2 text-white shadow-lg group-hover:scale-110 transition-transform"
-                  >
-                    <ApIcon style={{ width: `${iconGraphicSize}px`, height: `${iconGraphicSize}px` }} />
-                  </div>
-
-                  <div
-                    style={{ fontSize: `${labelTextSize}px` }}
-                    className="rounded-md bg-slate-900/90 backdrop-blur-xs px-2 py-0.5 border border-white/30 text-white font-mono font-bold shadow-md"
-                  >
-                    {ap.id}
-                  </div>
+                  <DeviceIconBox
+                    type="ap"
+                    appearance={apApp}
+                  />
+                  <DeviceLabelBadge
+                    label={ap.id}
+                    type="ap"
+                    appearance={apApp}
+                  />
                 </div>
               );
             })}
@@ -1099,15 +1027,16 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                       onSelectSignal(sig);
                     }
                   }}
+                  title={`Signal: ${sig.signal}% (${sig.classification})${sig.dbm !== undefined ? ` • ${sig.dbm} dBm` : ''}${sig.speedMbps !== undefined ? ` • ${sig.speedMbps} Mbps` : ''}${sig.location ? ` • ${sig.location}` : ''}`}
                   className="interactive-marker group absolute pointer-events-auto flex items-center gap-1 cursor-pointer select-none rounded-md bg-white/95 backdrop-blur-xs px-1.5 py-0.5 border border-slate-300 shadow-md hover:scale-110 hover:border-slate-400 transition-all"
                 >
-                  {/* Original Black Signal Number */}
+                  {/* Original Black Signal Number with % */}
                   {visibility.showSignalValues && (
                     <span
                       style={{ fontSize: `${textSize}px`, color: textColor }}
                       className="font-black font-mono leading-none"
                     >
-                      {sig.signal}
+                      {sig.signal}%
                     </span>
                   )}
 

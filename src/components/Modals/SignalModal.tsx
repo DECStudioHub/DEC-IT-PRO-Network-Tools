@@ -29,6 +29,8 @@ export const SignalModal: React.FC<SignalModalProps> = ({
   existingCount = 0,
 }) => {
   const [signalValue, setSignalValue] = useState<string>('');
+  const [dbmValue, setDbmValue] = useState<string>('');
+  const [speedMbpsValue, setSpeedMbpsValue] = useState<string>('');
   const [location, setLocation] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -38,11 +40,15 @@ export const SignalModal: React.FC<SignalModalProps> = ({
 
     if (initialData) {
       setSignalValue(String(initialData.signal));
+      setDbmValue(initialData.dbm !== undefined ? String(initialData.dbm) : '');
+      setSpeedMbpsValue(initialData.speedMbps !== undefined ? String(initialData.speedMbps) : '');
       setLocation(initialData.location || '');
       setNotes(initialData.notes || '');
       setValidationError(null);
     } else {
       setSignalValue('85');
+      setDbmValue('-55');
+      setSpeedMbpsValue('150');
       setLocation('');
       setNotes('');
       setValidationError(null);
@@ -68,6 +74,10 @@ export const SignalModal: React.FC<SignalModalProps> = ({
     const classification = classifySignalStrength(result.numericValue);
     const readingId = initialData?.id || `SIG-${String(existingCount + 1).padStart(2, '0')}`;
 
+    // Parse optional technical fields
+    const parsedDbm = dbmValue.trim() ? Number(dbmValue.replace(/[^0-9.-]/g, '')) : undefined;
+    const parsedSpeed = speedMbpsValue.trim() ? Number(speedMbpsValue.replace(/[^0-9.]/g, '')) : undefined;
+
     onSave({
       id: readingId,
       signal: result.numericValue,
@@ -76,6 +86,8 @@ export const SignalModal: React.FC<SignalModalProps> = ({
       position: initialData ? initialData.position : position,
       location: location.trim() || undefined,
       notes: notes.trim() || undefined,
+      dbm: !isNaN(parsedDbm as number) ? parsedDbm : undefined,
+      speedMbps: !isNaN(parsedSpeed as number) ? parsedSpeed : undefined,
     });
     onClose();
   };
@@ -171,6 +183,45 @@ export const SignalModal: React.FC<SignalModalProps> = ({
                 Enter a numeric value from 0 to 100 to preview bars and classification.
               </p>
             )}
+          </div>
+
+          {/* Technical Measurement Fields: DBM and SPEED MBPS */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                DBM <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={dbmValue}
+                  onChange={(e) => setDbmValue(e.target.value)}
+                  placeholder="e.g. -65"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-12 text-sm font-mono focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                />
+                <span className="absolute right-3 top-2 text-xs font-bold text-slate-400 pointer-events-none">
+                  dBm
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">
+                SPEED MBPS <span className="text-slate-400 font-normal">(Optional)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={speedMbpsValue}
+                  onChange={(e) => setSpeedMbpsValue(e.target.value)}
+                  placeholder="e.g. 150"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 pr-14 text-sm font-mono focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                />
+                <span className="absolute right-3 top-2 text-xs font-bold text-slate-400 pointer-events-none">
+                  Mbps
+                </span>
+              </div>
+            </div>
           </div>
 
           <div>

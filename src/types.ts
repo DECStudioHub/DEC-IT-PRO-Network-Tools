@@ -16,12 +16,18 @@ export type CableArrowDirection = 'none' | 'from-to' | 'both';
 export type WifiIconStyle = 'bars' | 'curved' | 'dots';
 
 export interface ItemAppearance {
-  textSize?: number; // 8 - 72 px
-  iconSize?: number; // 16 - 80 px
+  textSize?: number; // 8 - 100 px (Independent of icon size)
+  iconSize?: number; // 10 - 100 px (Independent of text size)
   iconColor?: string; // HEX color code
+  iconBgType?: 'transparent' | 'white-circle' | 'white-square' | 'dark-square' | 'custom' | 'none';
+  enableBorder?: boolean;
   borderColor?: string; // HEX
-  borderWidth?: number; // 0 - 6 px
+  borderWidth?: number; // 1 - 5 px
   textColor?: string; // HEX
+  fontWeight?: 'normal' | 'medium' | 'bold' | 'black';
+  textBgType?: 'transparent' | 'white-pill' | 'dark-pill' | 'custom';
+  textBgColor?: string;
+  textOpacity?: number; // 0 - 100 %
   bgColor?: string; // HEX
   bgOpacity?: number; // 0 - 100 %
   textOutline?: boolean;
@@ -33,6 +39,88 @@ export interface ItemAppearance {
   lineThickness?: CableThickness;
   arrowDirection?: CableArrowDirection;
 }
+
+export const DEFAULT_ICON_SIZE = 48; // Requirement 270
+export const DEFAULT_TEXT_SIZE = 18; // Requirement 270
+export const MIN_ICON_SIZE = 10;
+export const MAX_ICON_SIZE = 100;
+export const MIN_TEXT_SIZE = 8;
+export const MAX_TEXT_SIZE = 100;
+
+export function clampIconSize(size: any, fallback = DEFAULT_ICON_SIZE): number {
+  const n = Number(size);
+  if (isNaN(n) || !isFinite(n) || n <= 0) return fallback;
+  return Math.max(MIN_ICON_SIZE, Math.min(MAX_ICON_SIZE, Math.round(n)));
+}
+
+export function clampTextSize(size: any, fallback = DEFAULT_TEXT_SIZE): number {
+  const n = Number(size);
+  if (isNaN(n) || !isFinite(n) || n <= 0) return fallback;
+  return Math.max(MIN_TEXT_SIZE, Math.min(MAX_TEXT_SIZE, Math.round(n)));
+}
+
+export type PrintMode = 'complete' | 'standard' | 'floor-plan-only';
+export type PrintPreset = 'floor-plan-only' | 'standard-report' | 'complete-report';
+export type PrintOrientation = 'landscape' | 'portrait' | 'auto';
+export type PageOrientation = 'auto' | 'portrait' | 'landscape';
+export type PrintQuality = 'standard' | 'high-res';
+export type LegendPosition = 'bottom' | 'right' | 'separate-page';
+
+export interface PrintContentOptions {
+  includeFloorPlan: boolean;
+  includeSignalLegend: boolean;
+  includeInfrastructureLegend: boolean;
+  includeCableSchedule: boolean;
+  includeInsights: boolean;
+  includeRecommendations: boolean;
+  includeSummary: boolean;
+  includeSignOff: boolean;
+  // Backward compatibility keys
+  projectInfo?: boolean;
+  floorPlan?: boolean;
+  signalStrengthLegend?: boolean;
+  networkInfrastructure?: boolean;
+  insights?: boolean;
+  recommendations?: boolean;
+  finalSummary?: boolean;
+}
+
+export interface PrintConfiguration {
+  mode: PrintMode;
+  preset?: PrintPreset;
+  orientation: PrintOrientation;
+  quality: PrintQuality;
+  options: PrintContentOptions;
+  paperSize?: 'A4' | 'Letter' | 'Legal';
+  content?: PrintContentOptions;
+  legendPosition?: LegendPosition;
+}
+
+export const DEFAULT_PRINT_CONFIG: PrintConfiguration = {
+  mode: 'complete',
+  preset: 'complete-report',
+  orientation: 'landscape',
+  quality: 'high-res',
+  paperSize: 'A4',
+  options: {
+    includeFloorPlan: true,
+    includeSignalLegend: true,
+    includeInfrastructureLegend: true,
+    includeCableSchedule: true,
+    includeInsights: true,
+    includeRecommendations: true,
+    includeSummary: true,
+    includeSignOff: true,
+    floorPlan: true,
+    signalStrengthLegend: true,
+    networkInfrastructure: true,
+    insights: true,
+    recommendations: true,
+    finalSummary: true,
+  },
+};
+
+export const DEFAULT_PRINT_CONFIGURATION = DEFAULT_PRINT_CONFIG;
 
 export interface AppearanceSettings {
   defaultMdf: ItemAppearance;
@@ -87,6 +175,8 @@ export interface SignalReading {
   location?: string;
   notes?: string;
   appearance?: ItemAppearance;
+  dbm?: number; // e.g. -65 dBm
+  speedMbps?: number; // e.g. 150 Mbps
 }
 
 export interface LanCableRoutePoint {
@@ -288,3 +378,5 @@ export const DEFAULT_APPEARANCE_SETTINGS: AppearanceSettings = {
   },
   wifiIconStyle: 'bars',
 };
+
+

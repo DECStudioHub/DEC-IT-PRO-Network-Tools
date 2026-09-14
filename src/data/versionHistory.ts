@@ -17,12 +17,47 @@ export interface VersionRelease {
   categories: VersionChangeCategory[];
 }
 
-export const APP_CURRENT_VERSION = 'v1.0.1';
+export const APP_CURRENT_VERSION = 'v1.0.2';
 
 export const VERSION_HISTORY: VersionRelease[] = [
   {
-    version: 'v1.0.1',
+    version: 'v1.0.2',
     isLatest: true,
+    releaseTitle: 'Workspace Navigation, Print & Appearance Enhancement',
+    releaseDate: 'September 14, 2026',
+    categories: [
+      {
+        category: 'NEW FEATURES',
+        emoji: '🆕',
+        items: [
+          'Moved Floor Plan Tools from top horizontal navigation to Left Vertical Toolbar',
+          'Added professional Floor Plan Tools panel with Select, AP, MDF, IDF, Reading, LAN Cable, Scale, and Delete',
+          'Added Hide Toolbar feature with single-click collapse',
+          'Added Show / Unhide Toolbar feature with accessible expand trigger',
+          'Added Compact Icon Mode with floating tooltips for streamlined workflow',
+          'Added Tooltips and keyboard shortcut reference for all floor plan tools',
+          'Added Active Tool highlighting with color-coded badges and clear visual focus',
+          'Improved Floor Plan Workspace visibility — Floor Plan automatically gains more space when Toolbar is hidden',
+          'Added responsive toolbar behavior with independent scrolling for small screens',
+          'Added Delete Tool Safety separation with active warning banner and cancel protection',
+          'Added global keyboard shortcuts (V, A, M, I, R, L, S, Del, Esc) with form input protection',
+          'Dedicated Print Preview modal before triggering system print dialog',
+          'Optional Print Content selection (Project Info, Floor Plan, Signal Legend, Network Infrastructure, Insights, Recommendations, Final Summary)',
+          'Print Presets: Floor Plan Only, Standard Report, and Complete Report',
+          'Print Insights page with signal strength distribution, coverage assessment, and infrastructure summary',
+          'Print Recommendations engine grounded in actual recorded project survey data',
+          'Print Final Summary page with branch statistics, final findings, and executive sign-off lines',
+          'Professional Multi-Page Reports with dynamic page numbering (e.g. Page 1 of 3)',
+          'Complete Report 3-page default output layout',
+          'Apply Appearance to Individual Items or Apply to All Same Device Types with single click',
+          'Position protection during resizing — changing icon/text dimensions never moves X/Y coordinates or cables',
+        ],
+      },
+    ],
+  },
+  {
+    version: 'v1.0.1',
+    isLatest: false,
     releaseTitle: 'Fixes & Enhancements',
     releaseDate: 'September 13, 2026',
     categories: [

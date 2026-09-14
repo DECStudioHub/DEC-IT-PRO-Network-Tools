@@ -12,11 +12,16 @@ import {
   LanCable,
   VisibilitySettings,
   StoreInfo,
+  AppearanceSettings,
+  ItemAppearance,
+  clampIconSize,
+  clampTextSize,
 } from '../types';
 import { renderHeatmapToCanvas } from './heatmapRenderer';
 
 /**
  * Generates a high-resolution composite canvas/PNG of the floor plan with all active overlays.
+ * Respects v1.0.2 ItemAppearance settings (borders, backgrounds, custom sizes, colors).
  */
 export async function generateCompositePng(
   floorPlan: FloorPlanDocument,
@@ -26,7 +31,8 @@ export async function generateCompositePng(
   signalReadings: SignalReading[],
   lanCables: LanCable[],
   visibility: VisibilitySettings,
-  storeInfo: StoreInfo
+  storeInfo: StoreInfo,
+  appearanceSettings?: AppearanceSettings
 ): Promise<string> {
   const planW = floorPlan.originalWidth;
   const planH = floorPlan.originalHeight;
@@ -55,13 +61,13 @@ export async function generateCompositePng(
 
   ctx.font = '13px sans-serif';
   ctx.fillStyle = '#38bdf8'; // sky-400
-  ctx.fillText('WiFi Signal Strength & Access Point Coverage Analysis', 30, 68);
+  ctx.fillText('WiFi Signal Strength & Access Point Coverage Analysis • DECStudioAiCreation v1.0.2', 30, 68);
 
   // Right side header info
   ctx.fillStyle = '#f8fafc';
   ctx.font = '12px sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText(`Store: ${storeInfo.storeName || 'Store Location'} | Code: ${storeInfo.storeCode || 'N/A'}`, totalW - 30, 36);
+  ctx.fillText(`Branch: ${storeInfo.branchName || storeInfo.storeName || 'Branch Location'} | Code: ${storeInfo.branchCode || storeInfo.storeCode || 'N/A'}`, totalW - 30, 36);
   ctx.fillText(`Date: ${storeInfo.assessmentDate || new Date().toLocaleDateString()} | Tech: ${storeInfo.preparedBy || 'IT Technician'}`, totalW - 30, 58);
   ctx.fillText(`${storeInfo.location || 'Retail Floor'} • ${storeInfo.floorArea || 'Level 1'}`, totalW - 30, 80);
   ctx.textAlign = 'left';
@@ -87,18 +93,23 @@ export async function generateCompositePng(
     lanCables.forEach((cable) => {
       if (!cable.route || cable.route.length < 2) return;
 
+      const app = cable.appearance || appearanceSettings?.defaultCable || {};
       const strokeColor =
-        cable.cableType === 'CAT6'
+        app.lineColor ||
+        (cable.cableType === 'CAT6'
           ? '#2563eb'
           : cable.cableType === 'CAT6A'
           ? '#7c3aed'
           : cable.cableType === 'Fiber'
           ? '#d97706'
-          : '#475569';
+          : '#475569');
 
-      // White outline casing
+      const thicknessVal =
+        app.lineThickness === 'thick' ? 5 : app.lineThickness === 'thin' ? 2 : 3.5;
+
+      // White outline casing for contrast
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 6;
+      ctx.lineWidth = thicknessVal + 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.beginPath();
@@ -112,9 +123,15 @@ export async function generateCompositePng(
 
       // Main line
       ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = 3.5;
-      if (cable.cableType === 'Fiber') ctx.setLineDash([8, 5]);
-      else ctx.setLineDash([]);
+      ctx.lineWidth = thicknessVal;
+
+      if (app.lineStyle === 'dashed' || cable.cableType === 'Fiber') {
+        ctx.setLineDash([8, 5]);
+      } else if (app.lineStyle === 'dotted') {
+        ctx.setLineDash([3, 4]);
+      } else {
+        ctx.setLineDash([]);
+      }
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -126,24 +143,27 @@ export async function generateCompositePng(
         const mx = ((p1.x + p2.x) / 2) * planW;
         const my = headerH + ((p1.y + p2.y) / 2) * planH;
 
+        const textSize = clampTextSize(app.textSize, 10);
+        ctx.font = `bold ${textSize}px monospace`;
+        const textMetrics = ctx.measureText(cable.id);
+        const bw = Math.max(90, textMetrics.width + 30);
+        const bh = textSize + 18;
+
         ctx.fillStyle = '#0f172a';
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 1.5;
-        const bw = 90;
-        const bh = 28;
         ctx.beginPath();
         ctx.roundRect(mx - bw / 2, my - bh / 2, bw, bh, 6);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 10px monospace';
         ctx.textAlign = 'center';
         ctx.fillText(cable.id, mx, my - 2);
 
         ctx.fillStyle = '#38bdf8';
-        ctx.font = 'bold 9px sans-serif';
-        ctx.fillText(`${cable.length}m • ${cable.cableType}`, mx, my + 9);
+        ctx.font = `bold ${Math.max(8, textSize - 2)}px sans-serif`;
+        ctx.fillText(`${cable.length}m • ${cable.cableType}`, mx, my + 10);
         ctx.textAlign = 'left';
       }
     });
@@ -156,36 +176,53 @@ export async function generateCompositePng(
       const cx = mdf.position.x * planW;
       const cy = headerH + mdf.position.y * planH;
 
-      ctx.fillStyle = '#0f172a';
-      ctx.strokeStyle = '#60a5fa';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.roundRect(cx - 20, cy - 20, 40, 40, 8);
-      ctx.fill();
-      ctx.stroke();
+      const app = mdf.appearance || appearanceSettings?.defaultMdf || {};
+      const boxSize = clampIconSize(app.iconSize, 40);
+      const halfBox = boxSize / 2;
+      const accentColor = app.iconColor || '#60a5fa';
+      const outlineColor = app.borderColor || '#60a5fa';
+      const borderWidth = app.enableBorder !== false ? (app.borderWidth || 2.5) : 0;
 
-      // MDF Server icon representation
-      ctx.fillStyle = '#60a5fa';
-      ctx.fillRect(cx - 12, cy - 12, 24, 6);
-      ctx.fillRect(cx - 12, cy - 3, 24, 6);
-      ctx.fillRect(cx - 12, cy + 6, 24, 6);
+      // Draw Background
+      ctx.fillStyle = app.bgColor || '#0f172a';
+      ctx.strokeStyle = outlineColor;
+      ctx.lineWidth = borderWidth;
+      ctx.beginPath();
+      ctx.roundRect(cx - halfBox, cy - halfBox, boxSize, boxSize, Math.min(10, boxSize / 4));
+      ctx.fill();
+      if (borderWidth > 0) ctx.stroke();
+
+      // MDF Server Icon Representation inside box
+      const rackW = Math.round(boxSize * 0.6);
+      const rackH = Math.max(3, Math.round(boxSize * 0.12));
+      const rackGap = Math.max(2, Math.round(boxSize * 0.08));
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(cx - rackW / 2, cy - rackH * 1.5 - rackGap, rackW, rackH);
+      ctx.fillRect(cx - rackW / 2, cy - rackH * 0.5, rackW, rackH);
+      ctx.fillRect(cx - rackW / 2, cy + rackH * 0.5 + rackGap, rackW, rackH);
 
       // Label below
+      const labelTextSize = clampTextSize(app.textSize, 11);
+      ctx.font = `${app.fontWeight === 'bold' || app.fontWeight === 'black' ? 'bold ' : ''}${labelTextSize}px monospace`;
+      const idWidth = ctx.measureText(mdf.id).width;
+      const lblW = Math.max(72, idWidth + 20);
+      const lblH = labelTextSize + 14;
+
       ctx.fillStyle = '#0f172a';
-      ctx.strokeStyle = '#3b82f6';
+      ctx.strokeStyle = outlineColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(cx - 36, cy + 24, 72, 24, 4);
+      ctx.roundRect(cx - lblW / 2, cy + halfBox + 4, lblW, lblH, 4);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = app.textColor || '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText(mdf.id, cx, cy + 35);
-      ctx.fillStyle = '#60a5fa';
-      ctx.font = 'bold 7.5px sans-serif';
-      ctx.fillText('SERVER CABINET', cx, cy + 44);
+      ctx.fillText(mdf.id, cx, cy + halfBox + 4 + labelTextSize);
+
+      ctx.fillStyle = accentColor;
+      ctx.font = `bold ${Math.max(7, labelTextSize - 3)}px sans-serif`;
+      ctx.fillText('SERVER CABINET', cx, cy + halfBox + 4 + labelTextSize + 9);
       ctx.textAlign = 'left';
     });
   }
@@ -197,34 +234,49 @@ export async function generateCompositePng(
       const cx = idf.position.x * planW;
       const cy = headerH + idf.position.y * planH;
 
-      ctx.fillStyle = '#042f2e';
-      ctx.strokeStyle = '#2dd4bf';
-      ctx.lineWidth = 2.5;
+      const app = idf.appearance || appearanceSettings?.defaultIdf || {};
+      const boxSize = clampIconSize(app.iconSize, 36);
+      const halfBox = boxSize / 2;
+      const accentColor = app.iconColor || '#2dd4bf';
+      const outlineColor = app.borderColor || '#2dd4bf';
+      const borderWidth = app.enableBorder !== false ? (app.borderWidth || 2.5) : 0;
+
+      ctx.fillStyle = app.bgColor || '#042f2e';
+      ctx.strokeStyle = outlineColor;
+      ctx.lineWidth = borderWidth;
       ctx.beginPath();
-      ctx.roundRect(cx - 18, cy - 18, 36, 36, 8);
+      ctx.roundRect(cx - halfBox, cy - halfBox, boxSize, boxSize, Math.min(8, boxSize / 4));
       ctx.fill();
-      ctx.stroke();
+      if (borderWidth > 0) ctx.stroke();
 
       // IDF Switch representation
-      ctx.fillStyle = '#2dd4bf';
-      ctx.fillRect(cx - 11, cy - 8, 22, 16);
+      const swW = Math.round(boxSize * 0.6);
+      const swH = Math.round(boxSize * 0.4);
+      ctx.fillStyle = accentColor;
+      ctx.fillRect(cx - swW / 2, cy - swH / 2, swW, swH);
 
       // Label below
+      const labelTextSize = clampTextSize(app.textSize, 11);
+      ctx.font = `${app.fontWeight === 'bold' || app.fontWeight === 'black' ? 'bold ' : ''}${labelTextSize}px monospace`;
+      const idWidth = ctx.measureText(idf.id).width;
+      const lblW = Math.max(72, idWidth + 20);
+      const lblH = labelTextSize + 14;
+
       ctx.fillStyle = '#042f2e';
-      ctx.strokeStyle = '#14b8a6';
+      ctx.strokeStyle = outlineColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(cx - 36, cy + 22, 72, 24, 4);
+      ctx.roundRect(cx - lblW / 2, cy + halfBox + 4, lblW, lblH, 4);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = app.textColor || '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText(idf.id, cx, cy + 33);
-      ctx.fillStyle = '#2dd4bf';
-      ctx.font = 'bold 7.5px sans-serif';
-      ctx.fillText('SWITCH HUB', cx, cy + 42);
+      ctx.fillText(idf.id, cx, cy + halfBox + 4 + labelTextSize);
+
+      ctx.fillStyle = accentColor;
+      ctx.font = `bold ${Math.max(7, labelTextSize - 3)}px sans-serif`;
+      ctx.fillText('SWITCH HUB', cx, cy + halfBox + 4 + labelTextSize + 9);
       ctx.textAlign = 'left';
     });
   }
@@ -236,34 +288,46 @@ export async function generateCompositePng(
       const cx = ap.position.x * planW;
       const cy = headerH + ap.position.y * planH;
 
-      // Green circle with white border
-      ctx.fillStyle = '#16a34a';
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
+      const app = ap.appearance || appearanceSettings?.defaultAp || {};
+      const boxSize = clampIconSize(app.iconSize, 32);
+      const radius = boxSize / 2;
+      const accentColor = app.iconColor || '#10b981';
+      const outlineColor = app.borderColor || '#ffffff';
+      const borderWidth = app.enableBorder !== false ? (app.borderWidth || 2) : 0;
+
+      // Outer circle / badge
+      ctx.fillStyle = accentColor;
+      ctx.strokeStyle = outlineColor;
+      ctx.lineWidth = borderWidth;
       ctx.beginPath();
-      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
       ctx.fill();
-      ctx.stroke();
+      if (borderWidth > 0) ctx.stroke();
 
       // White inner dot/wifi mark
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.arc(cx, cy, Math.max(2, radius * 0.25), 0, Math.PI * 2);
       ctx.fill();
 
       // AP label
+      const labelTextSize = clampTextSize(app.textSize, 11);
+      ctx.font = `${app.fontWeight === 'bold' || app.fontWeight === 'black' ? 'bold ' : ''}${labelTextSize}px monospace`;
+      const idWidth = ctx.measureText(ap.id).width;
+      const lblW = idWidth + 14;
+      const lblH = labelTextSize + 8;
+
       ctx.fillStyle = '#0f172a';
       ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(cx + 18, cy - 10, 48, 20, 4);
+      ctx.roundRect(cx + radius + 4, cy - lblH / 2, lblW, lblH, 4);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 10px monospace';
+      ctx.fillStyle = app.textColor || '#ffffff';
       ctx.textAlign = 'center';
-      ctx.fillText(ap.id, cx + 42, cy + 4);
+      ctx.fillText(ap.id, cx + radius + 4 + lblW / 2, cy + labelTextSize / 3);
       ctx.textAlign = 'left';
     });
   }
@@ -275,32 +339,41 @@ export async function generateCompositePng(
       const cx = sig.position.x * planW;
       const cy = headerH + sig.position.y * planH;
 
+      const app = sig.appearance || appearanceSettings?.defaultSignal || {};
+      const textSize = clampTextSize(app.textSize, 12);
+      const iconSize = clampIconSize(app.iconSize, 17);
+
       ctx.fillStyle = '#ffffff';
       ctx.strokeStyle = '#94a3b8';
       ctx.lineWidth = 1.2;
-      const rw = 48;
-      const rh = 22;
+      const rw = textSize * 3.1 + (visibility.showWifiBars ? iconSize + 6 : 6);
+      const rh = Math.max(textSize + 10, 22);
       ctx.beginPath();
       ctx.roundRect(cx - rw / 2, cy - rh / 2, rw, rh, 4);
       ctx.fill();
       ctx.stroke();
 
-      // Original Black Signal Number
-      ctx.fillStyle = '#000000';
-      ctx.font = 'bold 11px monospace';
-      ctx.textAlign = 'left';
-      ctx.fillText(String(sig.signal), cx - 18, cy + 4);
+      // Signal Number with %
+      if (visibility.showSignalValues) {
+        ctx.fillStyle = app.textColor || '#000000';
+        ctx.font = `${app.fontWeight === 'bold' || app.fontWeight === 'black' ? 'bold ' : ''}${textSize}px monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillText(`${sig.signal}%`, cx - rw / 2 + 5, cy + textSize / 3);
+      }
 
       // Bar color indicator
-      const barColor = sig.bars === 3 ? '#16a34a' : sig.bars === 2 ? '#d97706' : '#dc2626';
-      ctx.fillStyle = barColor;
-      for (let b = 1; b <= 3; b++) {
-        if (b <= sig.bars) {
-          ctx.fillRect(cx + 4 + (b - 1) * 5, cy + 4 - b * 3, 3.5, b * 3);
-        } else {
-          ctx.fillStyle = '#cbd5e1';
-          ctx.fillRect(cx + 4 + (b - 1) * 5, cy + 4 - b * 3, 3.5, b * 3);
-          ctx.fillStyle = barColor;
+      if (visibility.showWifiBars) {
+        const barColor = sig.bars === 3 ? '#16a34a' : sig.bars === 2 ? '#d97706' : '#dc2626';
+        const startX = cx + rw / 2 - iconSize - 2;
+        ctx.fillStyle = barColor;
+        for (let b = 1; b <= 3; b++) {
+          if (b <= sig.bars) {
+            ctx.fillRect(startX + (b - 1) * 4, cy + 4 - b * 3, 3, b * 3);
+          } else {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(startX + (b - 1) * 4, cy + 4 - b * 3, 3, b * 3);
+            ctx.fillStyle = barColor;
+          }
         }
       }
     });

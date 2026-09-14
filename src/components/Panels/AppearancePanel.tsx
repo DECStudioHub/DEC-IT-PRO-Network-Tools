@@ -12,35 +12,45 @@ import {
   AccessPoint,
   LanCable,
   SignalReading,
-  WifiIconStyle,
   CableLineStyle,
   CableThickness,
-  CableArrowDirection,
-  DEFAULT_APPEARANCE_SETTINGS,
+  clampIconSize,
+  clampTextSize,
+  MIN_ICON_SIZE,
+  MAX_ICON_SIZE,
+  MIN_TEXT_SIZE,
+  MAX_TEXT_SIZE,
+  DEFAULT_ICON_SIZE,
+  DEFAULT_TEXT_SIZE,
 } from '../../types';
+import {
+  DeviceIconBox,
+  DeviceLabelBadge,
+  MDF_ICON_STYLES,
+  IDF_ICON_STYLES,
+  AP_ICON_STYLES,
+  CABLE_ICON_STYLES,
+} from '../../utils/deviceIcons';
 import {
   Palette,
   Type,
   Maximize2,
   Server,
-  HardDrive,
-  Cpu,
-  Boxes,
-  Layers,
   Network,
-  Split,
-  Grid,
-  Share2,
   Radio,
-  Disc,
-  Wifi,
-  Router,
-  Antenna,
   Cable,
+  Activity,
   Check,
   RotateCcw,
   Sparkles,
   Sliders,
+  Minus,
+  Plus,
+  Eye,
+  Shield,
+  Layers,
+  Square,
+  Circle,
 } from 'lucide-react';
 
 export type SelectedAppearanceItem =
@@ -68,12 +78,12 @@ interface AppearancePanelProps {
 const PRESET_COLORS = [
   { name: 'Blue', hex: '#2563eb' },
   { name: 'Teal', hex: '#0d9488' },
-  { name: 'Green', hex: '#16a34a' },
+  { name: 'Emerald', hex: '#10b981' },
   { name: 'Red', hex: '#dc2626' },
   { name: 'Orange', hex: '#ea580c' },
-  { name: 'Yellow', hex: '#ca8a04' },
+  { name: 'Yellow', hex: '#eab308' },
   { name: 'Purple', hex: '#9333ea' },
-  { name: 'Black', hex: '#0f172a' },
+  { name: 'Dark Slate', hex: '#0f172a' },
   { name: 'White', hex: '#ffffff' },
 ];
 
@@ -85,27 +95,18 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   onApplyToAllType,
   onResetTypeToDefault,
 }) => {
-  // Mode: if item is selected, user can edit selected item or global type
   const [scope, setScope] = useState<'item' | 'global'>('item');
   const [activeCategory, setActiveCategory] = useState<'mdf' | 'idf' | 'ap' | 'cable' | 'signal'>('mdf');
+  const [previewBg, setPreviewBg] = useState<'blueprint' | 'light' | 'dark'>('blueprint');
 
   const targetCategory = selectedItem ? selectedItem.type : activeCategory;
 
-  // Resolve current appearance
+  // Resolve current appearance safely
   const getCurrentAppearance = (): ItemAppearance => {
-    const selectedItemAppearance = (selectedItem as any)?.item?.appearance || (selectedItem as any)?.appearance;
-    if (selectedItem && scope === 'item') {
-      return selectedItemAppearance || (
-        selectedItem.type === 'mdf'
-          ? appearanceSettings.defaultMdf
-          : selectedItem.type === 'idf'
-          ? appearanceSettings.defaultIdf
-          : selectedItem.type === 'ap'
-          ? appearanceSettings.defaultAp
-          : selectedItem.type === 'cable'
-          ? appearanceSettings.defaultCable
-          : appearanceSettings.defaultSignal
-      );
+    const selectedItemAppearance =
+      (selectedItem as any)?.item?.appearance || (selectedItem as any)?.appearance;
+    if (selectedItem && scope === 'item' && selectedItemAppearance) {
+      return selectedItemAppearance;
     }
 
     switch (targetCategory) {
@@ -123,15 +124,24 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   };
 
   const currentApp = getCurrentAppearance();
+  const selectedItemId =
+    (selectedItem as any)?.item?.id || (selectedItem as any)?.id || '';
 
+  // Safe handler with position protection
   const handleFieldChange = (fields: Partial<ItemAppearance>) => {
-    const updated = { ...currentApp, ...fields };
-    const selectedItemId = (selectedItem as any)?.item?.id || (selectedItem as any)?.id || '';
+    const updated: ItemAppearance = { ...currentApp, ...fields };
 
-    if (selectedItem && scope === 'item') {
+    // Clamping validations
+    if (updated.iconSize !== undefined) {
+      updated.iconSize = clampIconSize(updated.iconSize);
+    }
+    if (updated.textSize !== undefined) {
+      updated.textSize = clampTextSize(updated.textSize);
+    }
+
+    if (selectedItem && scope === 'item' && selectedItemId) {
       onUpdateItemAppearance(selectedItem.type, selectedItemId, updated);
     } else {
-      // Update global defaults for this category
       const nextGlobal: AppearanceSettings = { ...appearanceSettings };
       if (targetCategory === 'mdf') nextGlobal.defaultMdf = updated;
       else if (targetCategory === 'idf') nextGlobal.defaultIdf = updated;
@@ -143,49 +153,69 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
     }
   };
 
-  const selectedItemId = (selectedItem as any)?.item?.id || (selectedItem as any)?.id || '';
+  // Stepper handlers
+  const handleIconSizeStep = (delta: number) => {
+    const current = clampIconSize(currentApp.iconSize, DEFAULT_ICON_SIZE);
+    handleFieldChange({ iconSize: clampIconSize(current + delta) });
+  };
+
+  const handleTextSizeStep = (delta: number) => {
+    const current = clampTextSize(currentApp.textSize, DEFAULT_TEXT_SIZE);
+    handleFieldChange({ textSize: clampTextSize(current + delta) });
+  };
+
+  const activeIconSize = clampIconSize(currentApp.iconSize, DEFAULT_ICON_SIZE);
+  const activeTextSize = clampTextSize(currentApp.textSize, DEFAULT_TEXT_SIZE);
 
   return (
-    <div className="space-y-4 text-slate-800">
-      {/* Category or Selected Item Header */}
+    <div className="space-y-4 text-slate-800 pb-8 select-none">
+      {/* 1. Header & Scope Management */}
       <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Palette className="h-4 w-4 text-indigo-600" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-              {selectedItem
-                ? `Styling: ${selectedItemId} (${selectedItem.type.toUpperCase()})`
-                : 'Customization & Appearance'}
-            </h3>
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-white shadow-2xs">
+              <Palette className="h-4 w-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
+                {selectedItem
+                  ? `Device: ${selectedItemId}`
+                  : 'Icon & Text Appearance'}
+              </h3>
+              <p className="text-[10px] text-slate-400">
+                Custom size, color, background, borders, and fonts
+              </p>
+            </div>
           </div>
+
           <button
             type="button"
             onClick={() => {
-              if (selectedItem && scope === 'item') {
+              if (selectedItem && scope === 'item' && selectedItemId) {
                 onResetTypeToDefault(selectedItem.type, selectedItemId);
               } else {
                 onResetTypeToDefault(targetCategory);
               }
             }}
-            title="Reset to default style"
-            className="flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-slate-800 transition-colors"
+            title="Reset to default settings"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
           >
             <RotateCcw className="h-3 w-3" />
             Reset
           </button>
         </div>
 
-        {/* If no selected item, show category switcher */}
+        {/* Category Switcher or Scope Switcher */}
         {!selectedItem ? (
           <div className="grid grid-cols-5 gap-1 text-[10px] font-bold text-center bg-slate-100 p-1 rounded-lg">
             {(['mdf', 'idf', 'ap', 'cable', 'signal'] as const).map((cat) => (
               <button
-                key={`cat-${cat}`}
+                key={`cat-btn-${cat}`}
                 type="button"
                 onClick={() => setActiveCategory(cat)}
-                className={`py-1 rounded uppercase tracking-wider transition-all ${
+                className={`py-1.5 rounded uppercase tracking-wider transition-all ${
                   activeCategory === cat
-                    ? 'bg-white text-indigo-700 shadow-xs font-black'
+                    ? 'bg-white text-indigo-700 shadow-2xs font-black'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -194,139 +224,339 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
             ))}
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => setScope('item')}
-              className={`flex-1 py-1 px-2 rounded-lg border text-center transition-all ${
-                scope === 'item'
-                  ? 'border-indigo-600 bg-indigo-50 font-bold text-indigo-700'
-                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              This Device Only
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                onApplyToAllType(selectedItem.type, currentApp);
-              }}
-              className="flex-1 py-1 px-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-center font-medium transition-all"
-            >
-              Apply to All {selectedItem.type.toUpperCase()}
-            </button>
+          <div className="space-y-2 pt-1 border-t border-slate-100">
+            <div className="grid grid-cols-2 gap-1.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setScope('item')}
+                className={`py-1.5 px-2 rounded-lg border text-center font-bold transition-all ${
+                  scope === 'item'
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                This Device Only
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onApplyToAllType(selectedItem.type, currentApp);
+                }}
+                className="py-1.5 px-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 font-bold transition-all"
+              >
+                Apply to All {selectedItem.type.toUpperCase()}
+              </button>
+            </div>
           </div>
         )}
       </div>
 
-      {/* 1. RESIZABLE TEXT & ICONS (#129, #131) */}
-      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3.5">
+      {/* 2. LIVE PREVIEW CONTAINER (Requirement 276, 277) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-2">
         <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-            <Type className="h-3.5 w-3.5 text-indigo-600" />
-            Text & Icon Dimensions
+            <Eye className="h-3.5 w-3.5 text-indigo-600" />
+            Live Preview (Real-Time)
           </span>
-          <span className="text-[10px] text-slate-400">Never moves coordinates</span>
-        </div>
-
-        {/* Text Size Slider & Presets */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] font-semibold text-slate-600">Text Size (8–72 px)</label>
-            <span className="text-xs font-mono font-bold text-indigo-600">
-              {currentApp.textSize || 11} px
-            </span>
-          </div>
-          <input
-            type="range"
-            min="8"
-            max="36"
-            step="1"
-            value={currentApp.textSize || 11}
-            onChange={(e) => handleFieldChange({ textSize: parseInt(e.target.value) })}
-            className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-          />
-          <div className="flex items-center justify-between gap-1 mt-1 text-[10px]">
-            {[
-              { label: 'Small', px: 10 },
-              { label: 'Medium', px: 13 },
-              { label: 'Large', px: 16 },
-              { label: 'XL', px: 22 },
-            ].map((p) => (
-              <button
-                key={`txt-pre-${p.label}`}
-                type="button"
-                onClick={() => handleFieldChange({ textSize: p.px })}
-                className={`flex-1 py-0.5 rounded border ${
-                  currentApp.textSize === p.px
-                    ? 'border-indigo-600 bg-indigo-50 font-bold text-indigo-700'
-                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+          {/* Background Contrast Selector */}
+          <div className="flex items-center gap-1 text-[10px]">
+            <button
+              type="button"
+              onClick={() => setPreviewBg('blueprint')}
+              className={`px-1.5 py-0.5 rounded ${
+                previewBg === 'blueprint' ? 'bg-slate-900 text-white font-bold' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewBg('light')}
+              className={`px-1.5 py-0.5 rounded ${
+                previewBg === 'light' ? 'bg-slate-900 text-white font-bold' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              Light
+            </button>
+            <button
+              type="button"
+              onClick={() => setPreviewBg('dark')}
+              className={`px-1.5 py-0.5 rounded ${
+                previewBg === 'dark' ? 'bg-slate-900 text-white font-bold' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              Dark
+            </button>
           </div>
         </div>
 
-        {/* Icon Size Slider & Presets (#131: Independent of text size!) */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-[11px] font-semibold text-slate-600">Icon Size (16–80 px)</label>
-            <span className="text-xs font-mono font-bold text-indigo-600">
-              {currentApp.iconSize || 36} px
-            </span>
-          </div>
-          <input
-            type="range"
-            min="18"
-            max="64"
-            step="2"
-            value={currentApp.iconSize || 36}
-            onChange={(e) => handleFieldChange({ iconSize: parseInt(e.target.value) })}
-            className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
-          />
-          <div className="flex items-center justify-between gap-1 mt-1 text-[10px]">
-            {[
-              { label: 'Small', px: 24 },
-              { label: 'Medium', px: 36 },
-              { label: 'Large', px: 48 },
-              { label: 'XL', px: 60 },
-            ].map((p) => (
-              <button
-                key={`ico-pre-${p.label}`}
-                type="button"
-                onClick={() => handleFieldChange({ iconSize: p.px })}
-                className={`flex-1 py-0.5 rounded border ${
-                  currentApp.iconSize === p.px
-                    ? 'border-indigo-600 bg-indigo-50 font-bold text-indigo-700'
-                    : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
+        {/* Preview Area */}
+        <div
+          className={`relative flex min-h-[140px] items-center justify-center rounded-lg p-4 border transition-colors overflow-hidden ${
+            previewBg === 'blueprint'
+              ? 'bg-slate-900 border-slate-800 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:12px_12px]'
+              : previewBg === 'light'
+              ? 'bg-slate-100 border-slate-200'
+              : 'bg-slate-950 border-slate-800'
+          }`}
+        >
+          <div className="flex flex-col items-center">
+            {targetCategory === 'cable' ? (
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  style={{
+                    width: '140px',
+                    height:
+                      currentApp.lineThickness === 'thick'
+                        ? '5px'
+                        : currentApp.lineThickness === 'thin'
+                        ? '2px'
+                        : '3.5px',
+                    backgroundColor: currentApp.lineColor || '#2563eb',
+                    borderTop:
+                      currentApp.lineStyle === 'dashed'
+                        ? '3px dashed #2563eb'
+                        : currentApp.lineStyle === 'dotted'
+                        ? '3px dotted #2563eb'
+                        : undefined,
+                  }}
+                />
+                <DeviceLabelBadge
+                  label={selectedItemId || 'LAN-01'}
+                  subLabel="18.5 m • CAT6"
+                  type="cable"
+                  appearance={currentApp}
+                />
+              </div>
+            ) : targetCategory === 'signal' ? (
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center gap-1.5 rounded-md bg-white/95 px-2 py-1 border border-slate-300 shadow-md">
+                  <span
+                    style={{
+                      fontSize: `${activeTextSize}px`,
+                      color: currentApp.textColor || '#000000',
+                      fontWeight: currentApp.fontWeight === 'bold' ? 'bold' : 'normal',
+                    }}
+                    className="font-mono font-black"
+                  >
+                    88%
+                  </span>
+                  <Activity
+                    style={{
+                      width: `${activeIconSize * 0.6}px`,
+                      height: `${activeIconSize * 0.6}px`,
+                      color: '#16a34a',
+                    }}
+                  />
+                </div>
+                <DeviceLabelBadge
+                  label={selectedItemId || 'SIG-01'}
+                  subLabel="EXCELLENT"
+                  type="signal"
+                  appearance={currentApp}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <DeviceIconBox
+                  type={targetCategory}
+                  appearance={currentApp}
+                />
+                <DeviceLabelBadge
+                  label={selectedItemId || `${targetCategory.toUpperCase()}-01`}
+                  subLabel={
+                    targetCategory === 'mdf'
+                      ? 'SERVER CABINET'
+                      : targetCategory === 'idf'
+                      ? 'SWITCH HUB'
+                      : 'ACCESS POINT'
+                  }
+                  type={targetCategory}
+                  appearance={currentApp}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 2. DEVICE ICON SELECTION (#136, #137, #138, #140) */}
+      {/* 3. ICON SIZE CUSTOMIZATION (Max 100 px) (Requirement 268, 270, 271) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <Maximize2 className="h-3.5 w-3.5 text-indigo-600" />
+            Icon Size (10 – 100 px)
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono">Default: 48 px</span>
+        </div>
+
+        {/* Direct Input & Stepper */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleIconSizeStep(-4)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            title="Decrease icon size by 4px"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+
+          <input
+            type="range"
+            min={MIN_ICON_SIZE}
+            max={MAX_ICON_SIZE}
+            step="1"
+            value={activeIconSize}
+            onChange={(e) => handleFieldChange({ iconSize: parseInt(e.target.value) || DEFAULT_ICON_SIZE })}
+            className="flex-1 accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+          />
+
+          <button
+            type="button"
+            onClick={() => handleIconSizeStep(4)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            title="Increase icon size by 4px"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+
+          <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2 py-1">
+            <input
+              type="number"
+              min={MIN_ICON_SIZE}
+              max={MAX_ICON_SIZE}
+              value={activeIconSize}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (!isNaN(val)) {
+                  handleFieldChange({ iconSize: val });
+                }
+              }}
+              className="w-10 text-center text-xs font-mono font-bold text-indigo-700 bg-transparent focus:outline-hidden"
+            />
+            <span className="text-[10px] text-slate-400 font-mono">px</span>
+          </div>
+        </div>
+
+        {/* Quick Presets */}
+        <div className="grid grid-cols-5 gap-1 text-[10px]">
+          {[
+            { label: 'Small', px: 24 },
+            { label: 'Medium', px: 36 },
+            { label: 'Default', px: 48 },
+            { label: 'Large', px: 64 },
+            { label: '100px', px: 100 },
+          ].map((p) => (
+            <button
+              key={`ico-preset-${p.px}`}
+              type="button"
+              onClick={() => handleFieldChange({ iconSize: p.px })}
+              className={`py-1 rounded border transition-all ${
+                activeIconSize === p.px
+                  ? 'border-indigo-600 bg-indigo-50 font-bold text-indigo-700 shadow-2xs'
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. TEXT SIZE CUSTOMIZATION (Max 100 px) (Requirement 269, 270, 271) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+            <Type className="h-3.5 w-3.5 text-indigo-600" />
+            Text Size (8 – 100 px)
+          </span>
+          <span className="text-[10px] text-slate-400 font-mono">Independent of icon size</span>
+        </div>
+
+        {/* Direct Input & Stepper */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleTextSizeStep(-2)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            title="Decrease text size by 2px"
+          >
+            <Minus className="h-4 w-4" />
+          </button>
+
+          <input
+            type="range"
+            min={MIN_TEXT_SIZE}
+            max={MAX_TEXT_SIZE}
+            step="1"
+            value={activeTextSize}
+            onChange={(e) => handleFieldChange({ textSize: parseInt(e.target.value) || DEFAULT_TEXT_SIZE })}
+            className="flex-1 accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+          />
+
+          <button
+            type="button"
+            onClick={() => handleTextSizeStep(2)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+            title="Increase text size by 2px"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+
+          <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2 py-1">
+            <input
+              type="number"
+              min={MIN_TEXT_SIZE}
+              max={MAX_TEXT_SIZE}
+              value={activeTextSize}
+              onChange={(e) => {
+                const val = parseInt(e.target.value);
+                if (!isNaN(val)) {
+                  handleFieldChange({ textSize: val });
+                }
+              }}
+              className="w-10 text-center text-xs font-mono font-bold text-indigo-700 bg-transparent focus:outline-hidden"
+            />
+            <span className="text-[10px] text-slate-400 font-mono">px</span>
+          </div>
+        </div>
+
+        {/* Quick Presets */}
+        <div className="grid grid-cols-5 gap-1 text-[10px]">
+          {[
+            { label: 'Small', px: 11 },
+            { label: 'Medium', px: 14 },
+            { label: 'Default', px: 18 },
+            { label: 'Large', px: 28 },
+            { label: '100px', px: 100 },
+          ].map((p) => (
+            <button
+              key={`txt-preset-${p.px}`}
+              type="button"
+              onClick={() => handleFieldChange({ textSize: p.px })}
+              className={`py-1 rounded border transition-all ${
+                activeTextSize === p.px
+                  ? 'border-indigo-600 bg-indigo-50 font-bold text-indigo-700 shadow-2xs'
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 5. ICON STYLE SELECTION (Requirement 267, 272) */}
       <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block border-b border-slate-100 pb-1.5">
-          {targetCategory === 'cable' ? 'LAN Cable Line Style' : 'Device Icon Style'}
+          {targetCategory === 'cable' ? 'LAN Cable Line Style' : 'Device Icon Graphic Style'}
         </span>
 
-        {/* MDF Icon Options */}
+        {/* MDF Styles */}
         {targetCategory === 'mdf' && (
-          <div className="grid grid-cols-5 gap-1 text-[10px]">
-            {[
-              { id: 'server-rack', label: 'Rack', icon: Server },
-              { id: 'network-cabinet', label: 'Cabinet', icon: HardDrive },
-              { id: 'server', label: 'Unit', icon: Cpu },
-              { id: 'rack-cabinet', label: 'Boxes', icon: Boxes },
-              { id: 'layers', label: 'Frame', icon: Layers },
-            ].map((opt) => {
-              const IconComp = opt.icon;
+          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+            {MDF_ICON_STYLES.map((opt) => {
+              const IconComp = opt.component;
               const isSelected = (currentApp.iconStyle || 'server-rack') === opt.id;
               return (
                 <button
@@ -340,23 +570,18 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
                   }`}
                 >
                   <IconComp className="h-4 w-4" />
-                  <span>{opt.label}</span>
+                  <span className="truncate">{opt.label}</span>
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* IDF Icon Options */}
+        {/* IDF Styles */}
         {targetCategory === 'idf' && (
-          <div className="grid grid-cols-4 gap-1.5 text-[10px]">
-            {[
-              { id: 'network-switch', label: 'Switch', icon: Network },
-              { id: 'switch-hub', label: 'Hub', icon: Split },
-              { id: 'network-rack', label: 'Rack', icon: Grid },
-              { id: 'distribution-unit', label: 'Dist Unit', icon: Share2 },
-            ].map((opt) => {
-              const IconComp = opt.icon;
+          <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+            {IDF_ICON_STYLES.map((opt) => {
+              const IconComp = opt.component;
               const isSelected = (currentApp.iconStyle || 'network-switch') === opt.id;
               return (
                 <button
@@ -370,24 +595,18 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
                   }`}
                 >
                   <IconComp className="h-4 w-4" />
-                  <span>{opt.label}</span>
+                  <span className="truncate">{opt.label}</span>
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* AP Icon Options */}
+        {/* AP Styles */}
         {targetCategory === 'ap' && (
-          <div className="grid grid-cols-5 gap-1 text-[10px]">
-            {[
-              { id: 'standard-ap', label: 'Standard', icon: Radio },
-              { id: 'ceiling-ap', label: 'Ceiling', icon: Disc },
-              { id: 'wall-ap', label: 'Wall AP', icon: Wifi },
-              { id: 'wireless-device', label: 'Router', icon: Router },
-              { id: 'antenna', label: 'Antenna', icon: Antenna },
-            ].map((opt) => {
-              const IconComp = opt.icon;
+          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+            {AP_ICON_STYLES.map((opt) => {
+              const IconComp = opt.component;
               const isSelected = (currentApp.iconStyle || 'standard-ap') === opt.id;
               return (
                 <button
@@ -401,19 +620,19 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
                   }`}
                 >
                   <IconComp className="h-4 w-4" />
-                  <span>{opt.label}</span>
+                  <span className="truncate">{opt.label}</span>
                 </button>
               );
             })}
           </div>
         )}
 
-        {/* LAN Cable Line Style & Thickness (#140) */}
+        {/* LAN Cable Styles */}
         {targetCategory === 'cable' && (
           <div className="space-y-3">
             <div>
               <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                Line Pattern
+                Line Dash Pattern
               </label>
               <div className="grid grid-cols-3 gap-1 text-xs">
                 {(['solid', 'dashed', 'dotted'] as CableLineStyle[]).map((ls) => (
@@ -458,18 +677,125 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
         )}
       </div>
 
-      {/* 3. COLOR PALETTE & CUSTOM HEX (#133) */}
+      {/* 6. ICON BACKGROUND & BORDER CONTROLS (Requirement 273, 274) */}
+      {targetCategory !== 'cable' && (
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block border-b border-slate-100 pb-1.5">
+            Icon Background & Border
+          </span>
+
+          {/* Background Shape */}
+          <div>
+            <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+              Background Shape
+            </label>
+            <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+              {[
+                { id: 'transparent', label: 'Transparent', icon: Circle },
+                { id: 'white-circle', label: 'White Circle', icon: Circle },
+                { id: 'white-square', label: 'White Box', icon: Square },
+                { id: 'dark-square', label: 'Dark Box', icon: Square },
+                { id: 'custom', label: 'Custom Tint', icon: Palette },
+                { id: 'none', label: 'No Box', icon: Circle },
+              ].map((opt) => (
+                <button
+                  key={`bg-shape-${opt.id}`}
+                  type="button"
+                  onClick={() => handleFieldChange({ iconBgType: opt.id as any })}
+                  className={`py-1.5 px-1 rounded-lg border text-center font-semibold transition-all ${
+                    (currentApp.iconBgType || (targetCategory === 'ap' ? 'custom' : 'dark-square')) === opt.id
+                      ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Background Opacity */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold text-slate-600">Background Opacity</label>
+              <span className="text-xs font-mono font-bold text-slate-700">
+                {currentApp.bgOpacity ?? 95}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={currentApp.bgOpacity ?? 95}
+              onChange={(e) => handleFieldChange({ bgOpacity: parseInt(e.target.value) })}
+              className="w-full accent-indigo-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
+            />
+          </div>
+
+          {/* Border Controls (Requirement 274) */}
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={currentApp.enableBorder !== false}
+                  onChange={(e) => handleFieldChange({ enableBorder: e.target.checked })}
+                  className="rounded accent-indigo-600 h-4 w-4"
+                />
+                <span>Enable Icon Border</span>
+              </label>
+
+              {/* Border Width */}
+              <div className="flex items-center gap-1 text-xs">
+                {[1, 2, 3, 4, 5].map((w) => (
+                  <button
+                    key={`bw-${w}`}
+                    type="button"
+                    onClick={() => handleFieldChange({ borderWidth: w, enableBorder: true })}
+                    className={`h-6 w-6 rounded border font-mono font-bold ${
+                      (currentApp.borderWidth || 2) === w && currentApp.enableBorder !== false
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                        : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                    }`}
+                  >
+                    {w}p
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Border Color Picker */}
+            {currentApp.enableBorder !== false && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[11px] text-slate-600">Border Color:</span>
+                <input
+                  type="color"
+                  value={currentApp.borderColor || currentApp.iconColor || '#3b82f6'}
+                  onChange={(e) => handleFieldChange({ borderColor: e.target.value })}
+                  className="h-6 w-6 rounded border border-slate-300 p-0.5 cursor-pointer bg-white"
+                />
+                <span className="text-xs font-mono font-bold text-slate-700">
+                  {currentApp.borderColor || currentApp.iconColor || '#3b82f6'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 7. COLOR PALETTE & CUSTOM HEX (Requirement 272, 275) */}
       <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-700">
-            {targetCategory === 'cable' ? 'Line & Label Color' : 'Accent Color Palette'}
+            {targetCategory === 'cable' ? 'Line Color' : 'Icon Accent Color'}
           </span>
           <span className="text-xs font-mono font-bold text-slate-700">
             {currentApp.iconColor || currentApp.lineColor || '#2563eb'}
           </span>
         </div>
 
-        {/* Swatch Presets */}
+        {/* Swatches */}
         <div className="flex flex-wrap items-center gap-1.5">
           {PRESET_COLORS.map((c) => {
             const activeColor = currentApp.iconColor || currentApp.lineColor || '#2563eb';
@@ -500,7 +826,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
             );
           })}
 
-          {/* HTML5 Native Color Picker + Custom HEX Input */}
+          {/* HTML5 Native Color Picker */}
           <div className="relative flex items-center ml-auto">
             <input
               type="color"
@@ -517,21 +843,120 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
             />
           </div>
         </div>
+      </div>
 
-        {/* Background & Shadow Options (#145) */}
-        <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
-          <label className="flex items-center gap-1.5 cursor-pointer">
+      {/* 8. TEXT APPEARANCE CONTROLS (Requirement 275) */}
+      <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-700 block border-b border-slate-100 pb-1.5">
+          Label Typography & Contrast
+        </span>
+
+        {/* Font Weight */}
+        <div>
+          <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+            Font Weight
+          </label>
+          <div className="grid grid-cols-4 gap-1 text-[11px]">
+            {[
+              { id: 'normal', label: 'Normal' },
+              { id: 'medium', label: 'Medium' },
+              { id: 'bold', label: 'Bold' },
+              { id: 'black', label: 'Black' },
+            ].map((fw) => (
+              <button
+                key={`fw-${fw.id}`}
+                type="button"
+                onClick={() => handleFieldChange({ fontWeight: fw.id as any })}
+                className={`py-1 rounded border text-center ${
+                  (currentApp.fontWeight || 'bold') === fw.id
+                    ? 'border-indigo-600 bg-indigo-50 font-bold text-indigo-700'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {fw.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Label Background Style */}
+        <div>
+          <label className="text-[11px] font-semibold text-slate-600 block mb-1">
+            Label Background Pill
+          </label>
+          <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+            {[
+              { id: 'transparent', label: 'Transparent' },
+              { id: 'white-pill', label: 'White Badge' },
+              { id: 'dark-pill', label: 'Dark Badge' },
+            ].map((bg) => (
+              <button
+                key={`text-bg-${bg.id}`}
+                type="button"
+                onClick={() => handleFieldChange({ textBgType: bg.id as any })}
+                className={`py-1.5 rounded-lg border font-semibold ${
+                  (currentApp.textBgType || 'dark-pill') === bg.id
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold'
+                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {bg.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Text Shadows & Outlines */}
+        <div className="grid grid-cols-2 gap-2 pt-1">
+          <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
             <input
               type="checkbox"
               checked={currentApp.textShadow !== false}
               onChange={(e) => handleFieldChange({ textShadow: e.target.checked })}
-              className="rounded accent-indigo-600"
+              className="rounded accent-indigo-600 h-3.5 w-3.5"
             />
-            <span>Drop Shadow / Outline</span>
+            <span>Drop Shadow</span>
           </label>
 
-          <span className="text-[11px] text-slate-400">High contrast on plans</span>
+          <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={currentApp.textOutline === true}
+              onChange={(e) => handleFieldChange({ textOutline: e.target.checked })}
+              className="rounded accent-indigo-600 h-3.5 w-3.5"
+            />
+            <span>Text Outline</span>
+          </label>
         </div>
+      </div>
+
+      {/* 9. ACTION BUTTONS (Requirement 278) */}
+      <div className="space-y-2 pt-1">
+        {selectedItem && scope === 'item' && (
+          <button
+            type="button"
+            onClick={() => {
+              if (selectedItemId) {
+                onUpdateItemAppearance(selectedItem.type, selectedItemId, currentApp);
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition-all active:scale-98"
+          >
+            <Check className="h-4 w-4" />
+            Apply to This Item
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            onApplyToAllType(targetCategory, currentApp);
+          }}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs shadow-2xs transition-all active:scale-98"
+        >
+          <Sparkles className="h-4 w-4" />
+          Apply to All {targetCategory.toUpperCase()} Devices
+        </button>
       </div>
     </div>
   );

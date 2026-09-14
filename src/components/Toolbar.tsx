@@ -5,15 +5,10 @@
 
 import React, { useRef, useState } from 'react';
 import { ActiveTool, VisibilitySettings } from '../types';
+import { APP_CURRENT_VERSION } from '../data/versionHistory';
 import {
   Upload,
-  Server,
-  Network,
-  Radio,
-  Activity,
   Cable,
-  MousePointer,
-  Trash2,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -200,118 +195,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Separator */}
         <div className="h-5 w-[1px] bg-slate-200 mx-1" />
-
-        {/* GROUP 2 — TOOLS (Primary priority) */}
-        <div className="flex items-center gap-0.5 bg-slate-50 p-0.5 rounded-lg border border-slate-200">
-          {/* SELECT */}
-          <button
-            onClick={() => setActiveTool('select')}
-            title="Select & Pan Tool (V)"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-              activeTool === 'select'
-                ? 'bg-slate-900 text-white shadow-2xs ring-1 ring-slate-800'
-                : 'text-slate-700 hover:bg-white hover:text-slate-900'
-            }`}
-          >
-            <MousePointer className="h-3.5 w-3.5" />
-            <span>Select</span>
-          </button>
-
-          {/* AP */}
-          <button
-            onClick={() => setActiveTool('add-ap')}
-            title="Add Wireless Access Point (A)"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-              activeTool === 'add-ap'
-                ? 'bg-emerald-600 text-white shadow-2xs ring-1 ring-emerald-500'
-                : 'text-emerald-700 hover:bg-emerald-50'
-            }`}
-          >
-            <Radio className="h-3.5 w-3.5 text-emerald-600 active-text-white" />
-            <span>AP</span>
-          </button>
-
-          {/* MDF */}
-          <button
-            onClick={() => setActiveTool('add-mdf')}
-            title="Add MDF Server Cabinet (M)"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-              activeTool === 'add-mdf'
-                ? 'bg-blue-600 text-white shadow-2xs ring-1 ring-blue-500'
-                : 'text-blue-700 hover:bg-blue-50'
-            }`}
-          >
-            <Server className="h-3.5 w-3.5 text-blue-600" />
-            <span>MDF</span>
-          </button>
-
-          {/* IDF */}
-          <button
-            onClick={() => setActiveTool('add-idf')}
-            title="Add IDF Switch Hub (I)"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-              activeTool === 'add-idf'
-                ? 'bg-teal-600 text-white shadow-2xs ring-1 ring-teal-500'
-                : 'text-teal-700 hover:bg-teal-50'
-            }`}
-          >
-            <Network className="h-3.5 w-3.5 text-teal-600" />
-            <span>IDF</span>
-          </button>
-
-          {/* READING */}
-          <button
-            onClick={() => setActiveTool('add-signal')}
-            title="Add WiFi Signal Reading dBm (R)"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-              activeTool === 'add-signal'
-                ? 'bg-slate-900 text-white shadow-2xs ring-1 ring-slate-800'
-                : 'text-slate-800 hover:bg-slate-200'
-            }`}
-          >
-            <Activity className="h-3.5 w-3.5 text-amber-500" />
-            <span>Reading</span>
-          </button>
-
-          {/* LAN CABLE */}
-          <button
-            onClick={() => setActiveTool('add-cable')}
-            title="Add LAN Cable Route (C)"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-              activeTool === 'add-cable'
-                ? 'bg-indigo-600 text-white shadow-2xs ring-1 ring-indigo-500'
-                : 'text-indigo-700 hover:bg-indigo-50'
-            }`}
-          >
-            <Cable className="h-3.5 w-3.5 text-indigo-600" />
-            <span className="hidden sm:inline">LAN Cable</span>
-            <span className="sm:hidden">Cable</span>
-          </button>
-
-          {/* DELETE */}
-          <button
-            onClick={() => setActiveTool('delete')}
-            title="Delete Mode (D)"
-            className={`flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold transition-all cursor-pointer ${
-              activeTool === 'delete'
-                ? 'bg-rose-600 text-white shadow-2xs ring-1 ring-rose-500'
-                : 'text-rose-600 hover:bg-rose-50'
-            }`}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
-          </button>
-
-          {/* SCALE CALIBRATION */}
-          <button
-            onClick={onOpenScaleModal}
-            title="Calibrate Floor Plan Scale for Distance Measurement"
-            className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-white transition-colors cursor-pointer"
-          >
-            <Ruler className="h-3.5 w-3.5 text-amber-600" />
-            <span className="hidden md:inline">Scale</span>
-          </button>
-        </div>
 
         {/* IN-PROGRESS CABLE DRAWING HELPER */}
         {activeCableDrawing && (
@@ -652,7 +535,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                     className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-blue-600 hover:bg-blue-50 text-left font-semibold transition-colors cursor-pointer"
                   >
                     <History className="h-3.5 w-3.5 text-blue-500" />
-                    <span>What's New (v1.0.1)</span>
+                    <span>What's New ({APP_CURRENT_VERSION})</span>
                   </button>
                 )}
 

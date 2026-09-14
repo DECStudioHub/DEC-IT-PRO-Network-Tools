@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { ActiveTool, FloorScale, StoreInfo } from '../types';
+import { APP_CURRENT_VERSION } from '../data/versionHistory';
 import {
   Maximize2,
   Minimize2,
@@ -85,7 +86,7 @@ export const AppStatusBar: React.FC<AppStatusBarProps> = ({
       <div className="flex items-center gap-2 truncate">
         <span className="font-semibold text-slate-300">DECStudioAiCreation</span>
         <span className="text-slate-600">•</span>
-        <span className="font-bold text-emerald-400">WIFI HITMAP v1.0.1</span>
+        <span className="font-bold text-emerald-400">WIFI HITMAP {APP_CURRENT_VERSION}</span>
         <span className="hidden md:inline text-slate-600">•</span>
         <span className="hidden md:flex items-center gap-1 text-slate-300 truncate font-medium">
           <Building2 className="h-3 w-3 text-slate-400 shrink-0" />

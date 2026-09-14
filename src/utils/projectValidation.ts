@@ -142,6 +142,9 @@ export function validateAndSanitizeProject(data: ProjectData): ValidationResult 
           ? 'Good / Moderate'
           : 'Weak';
 
+      const dbm = typeof sig.dbm === 'number' && !isNaN(sig.dbm) ? sig.dbm : undefined;
+      const speedMbps = typeof sig.speedMbps === 'number' && !isNaN(sig.speedMbps) ? sig.speedMbps : undefined;
+
       return {
         ...sig,
         id: sig.id || `SIG-${idx + 1}`,
@@ -149,6 +152,8 @@ export function validateAndSanitizeProject(data: ProjectData): ValidationResult 
         bars,
         classification,
         position: { x: validX, y: validY },
+        dbm,
+        speedMbps,
       };
     });
 

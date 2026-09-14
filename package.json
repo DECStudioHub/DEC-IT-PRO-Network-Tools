@@ -1,7 +1,7 @@
 {
   "name": "dec-it-pro-network-tool",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Store WiFi Hitmap & Network Planner - Professional site survey and network infrastructure planning tool",
   "type": "module",
   "scripts": {

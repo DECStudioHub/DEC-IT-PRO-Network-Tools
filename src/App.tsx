@@ -21,6 +21,8 @@ import {
   AppearanceSettings,
   DEFAULT_APPEARANCE_SETTINGS,
   ItemAppearance,
+  DEFAULT_PRINT_CONFIG,
+  PrintConfiguration,
 } from './types';
 import { loadPdfDocument, renderPdfPage } from './utils/pdfLoader';
 import { generateSampleFloorPlan } from './utils/sampleFloorPlan';
@@ -30,9 +32,12 @@ import { validateAndSanitizeProject } from './utils/projectValidation';
 import { HistoryManager, ProjectSnapshot } from './utils/historyManager';
 
 // Components
+import { AppHeader } from './components/AppHeader';
 import { Toolbar } from './components/Toolbar';
 import { FloorPlanWorkspace } from './components/FloorPlanWorkspace';
+import { FloorPlanLeftToolbar } from './components/FloorPlanLeftToolbar';
 import { Sidebar } from './components/Sidebar';
+import { AppStatusBar } from './components/AppStatusBar';
 import { PrintView } from './components/PrintView';
 
 // Modals
@@ -58,6 +63,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 
 const STORAGE_KEY = 'store_wifi_hitmap_project';
@@ -132,6 +138,35 @@ export const App: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(380);
 
+  // Left Vertical Toolbar state (#294-#304)
+  const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('wifi_hitmap_left_toolbar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const [isLeftToolbarCompact, setIsLeftToolbarCompact] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('wifi_hitmap_left_toolbar_compact') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('wifi_hitmap_left_toolbar_collapsed', String(isLeftToolbarCollapsed));
+    } catch {}
+  }, [isLeftToolbarCollapsed]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('wifi_hitmap_left_toolbar_compact', String(isLeftToolbarCompact));
+    } catch {}
+  }, [isLeftToolbarCompact]);
+
   // Loading and error states
   const [isLoadingPdf, setIsLoadingPdf] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Rendering Floor Plan...');
@@ -179,6 +214,7 @@ export const App: React.FC = () => {
   const [isPreparingPrint, setIsPreparingPrint] = useState(false);
   const [printModalOpen, setPrintModalOpen] = useState(false);
   const [printCompositeUrl, setPrintCompositeUrl] = useState<string>('');
+  const [activePrintConfig, setActivePrintConfig] = useState<PrintConfiguration>(DEFAULT_PRINT_CONFIG);
 
   // Styling & Appearance Customization State (#120 - #140)
   const [appearanceSettings, setAppearanceSettings] = useState<AppearanceSettings>(DEFAULT_APPEARANCE_SETTINGS);
@@ -204,15 +240,17 @@ export const App: React.FC = () => {
   const [loadErrorMessage, setLoadErrorMessage] = useState('');
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [exportModalMode, setExportModalMode] = useState<'pdf' | 'png' | 'both'>('pdf');
+  const [isExpandedWorkspace, setIsExpandedWorkspace] = useState(false);
   const projectFileInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-fit calculation helper (#77, #78, #92, #94)
   const calculateFitZoom = useCallback(
-    (plan: FloorPlanDocument | null, isSideOpen: boolean, sideWidth: number) => {
+    (plan: FloorPlanDocument | null, isSideOpen: boolean, sideWidth: number, isExpanded: boolean = false) => {
       if (!plan) return 1.0;
       const reservedWidth = isSideOpen ? sideWidth : 0;
       const availW = Math.max(300, window.innerWidth - reservedWidth - 48);
-      const availH = Math.max(200, window.innerHeight - 56 - 48); // 56px toolbar + padding
+      const topOffset = (isExpanded ? 0 : 44) + 40 + 24 + 32;
+      const availH = Math.max(200, window.innerHeight - topOffset);
 
       const scaleX = availW / plan.originalWidth;
       const scaleY = availH / plan.originalHeight;
@@ -224,10 +262,10 @@ export const App: React.FC = () => {
 
   const handleFitFloorPlan = useCallback(() => {
     if (!floorPlan) return;
-    const fitZoom = calculateFitZoom(floorPlan, sidebarOpen, sidebarWidth);
+    const fitZoom = calculateFitZoom(floorPlan, sidebarOpen, sidebarWidth, isExpandedWorkspace);
     setZoom(fitZoom);
     setPan({ x: 0, y: 0 });
-  }, [floorPlan, sidebarOpen, sidebarWidth, calculateFitZoom]);
+  }, [floorPlan, sidebarOpen, sidebarWidth, isExpandedWorkspace, calculateFitZoom]);
 
   const handleCenterFloorPlan = useCallback(() => {
     setPan({ x: 0, y: 0 });
@@ -621,9 +659,18 @@ export const App: React.FC = () => {
     const nextState = !sidebarOpen;
     setSidebarOpen(nextState);
     if (floorPlan) {
-      const nextZoom = calculateFitZoom(floorPlan, nextState, sidebarWidth);
+      const nextZoom = calculateFitZoom(floorPlan, nextState, sidebarWidth, isExpandedWorkspace);
       setZoom(nextZoom);
       setPan({ x: 0, y: 0 });
+    }
+  };
+
+  const handleToggleExpandedWorkspace = () => {
+    const nextExpanded = !isExpandedWorkspace;
+    setIsExpandedWorkspace(nextExpanded);
+    if (floorPlan) {
+      const nextZoom = calculateFitZoom(floorPlan, sidebarOpen, sidebarWidth, nextExpanded);
+      setZoom(nextZoom);
     }
   };
 
@@ -807,6 +854,66 @@ export const App: React.FC = () => {
     setCableDrawingRoute([]);
     setActiveTool('select');
   };
+
+  // Global Keyboard Shortcuts (#306)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 'v':
+          setActiveTool('select');
+          break;
+        case 'a':
+          setActiveTool('add-ap');
+          break;
+        case 'm':
+          setActiveTool('add-mdf');
+          break;
+        case 'i':
+          setActiveTool('add-idf');
+          break;
+        case 'r':
+          setActiveTool('add-signal');
+          break;
+        case 'l':
+        case 'c':
+          setActiveTool('add-cable');
+          break;
+        case 's':
+          setScaleModalOpen(true);
+          break;
+        case 'delete':
+        case 'd':
+          setActiveTool('delete');
+          break;
+        case 'escape':
+          if (activeTool === 'delete') {
+            setActiveTool('select');
+          }
+          if (cableDrawingRoute.length > 0) {
+            handleCancelCableDrawing();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTool, cableDrawingRoute.length]);
 
   // Reposition cable label handler (#84)
   const handleUpdateCableLabelOffset = (cableId: string, offset: { x: number; y: number }) => {
@@ -1161,7 +1268,8 @@ export const App: React.FC = () => {
         signalReadings,
         lanCables,
         visibility,
-        storeInfo
+        storeInfo,
+        appearanceSettings
       );
       const link = document.createElement('a');
       link.href = dataUrl;
@@ -1189,7 +1297,8 @@ export const App: React.FC = () => {
         signalReadings,
         lanCables,
         visibility,
-        storeInfo
+        storeInfo,
+        appearanceSettings
       );
       setPrintCompositeUrl(dataUrl);
       setPrintModalOpen(true);
@@ -1222,6 +1331,30 @@ export const App: React.FC = () => {
         accept=".project,.json"
         className="hidden"
       />
+
+      {/* Top Application Header (Can be collapsed in Expanded Workspace mode) */}
+      {!isExpandedWorkspace && (
+        <AppHeader
+          storeInfo={storeInfo}
+          onOpenStoreInfo={() => setStoreInfoModalOpen(true)}
+          onOpenWelcome={() => setShowWelcomeScreen(true)}
+          onSaveProject={handleSaveProjectLocal}
+          onSaveAsProject={() => setSaveAsModalOpen(true)}
+          isSaving={isSaving}
+          saveStatus={saveStatus}
+          isDirty={isDirty}
+          onLoadProject={handleLoadProjectClick}
+          onOpenExportModal={(mode) => {
+            setExportModalMode(mode || 'pdf');
+            setExportModalOpen(true);
+          }}
+          onExportPng={handleExportPng}
+          onPrint={handlePrint}
+          isPreparingPrint={isPreparingPrint}
+          onOpenSupport={() => setSupportModalOpen(true)}
+          onOpenWhatsNew={() => setWhatsNewModalOpen(true)}
+        />
+      )}
 
       {/* Main Professional Toolbar (#88, #89, #94, #99, #104) */}
       <div className="no-print shrink-0">
@@ -1273,11 +1406,13 @@ export const App: React.FC = () => {
           onOpenSupport={() => setSupportModalOpen(true)}
           onResetAllItems={() => setResetAllModalOpen(true)}
           onOpenWhatsNew={() => setWhatsNewModalOpen(true)}
+          isExpandedWorkspace={isExpandedWorkspace}
+          onToggleExpandedWorkspace={handleToggleExpandedWorkspace}
         />
       </div>
 
       {/* Main View Area: Maximized Floor Plan Workspace + Collapsible/Resizable Sidebar (#76, #88) */}
-      <div className="relative flex flex-1 w-full h-full overflow-hidden no-print">
+      <div className="relative flex flex-1 w-full min-h-0 overflow-hidden no-print">
         {/* Success notification banner (#99, #101: ✓ Project Saved Successfully) */}
         {saveSuccessMessage && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-2xl animate-in fade-in slide-in-from-top-2 border border-emerald-400">
@@ -1326,6 +1461,20 @@ export const App: React.FC = () => {
           </div>
         )}
 
+        {/* Delete Mode Safety Notification Banner (Requirement 305) */}
+        {activeTool === 'delete' && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-2xl border border-rose-400 animate-in fade-in slide-in-from-top-2">
+            <Trash2 className="h-4 w-4 shrink-0 text-white animate-pulse" />
+            <span>DELETE MODE ACTIVE: Click any device, cable, or reading to delete it</span>
+            <button
+              onClick={() => setActiveTool('select')}
+              className="ml-2 px-2.5 py-1 rounded bg-white text-rose-700 text-xs font-bold hover:bg-rose-50 transition-colors shadow-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         {/* Loading overlay for PDF rendering */}
         {isLoadingPdf && (
           <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-900/70 p-4 backdrop-blur-xs text-white">
@@ -1340,8 +1489,23 @@ export const App: React.FC = () => {
           </div>
         )}
 
+        {/* LEFT VERTICAL TOOLBAR (#294-#304) */}
+        <FloorPlanLeftToolbar
+          activeTool={activeTool}
+          setActiveTool={setActiveTool}
+          onOpenScaleModal={() => setScaleModalOpen(true)}
+          hasFloorPlan={!!floorPlan}
+          activeCableDrawing={cableDrawingRoute.length > 0}
+          onFinishCableDrawing={handleFinishCableDrawing}
+          onCancelCableDrawing={handleCancelCableDrawing}
+          isCollapsed={isLeftToolbarCollapsed}
+          onToggleCollapse={() => setIsLeftToolbarCollapsed((prev) => !prev)}
+          isCompact={isLeftToolbarCompact}
+          onToggleCompact={() => setIsLeftToolbarCompact((prev) => !prev)}
+        />
+
         {/* PRIORITY 1: Interactive Floor Plan Workspace (Receives Largest Space #76) */}
-        <div className="relative flex-1 h-full overflow-hidden flex flex-col">
+        <div className="relative flex-1 h-full overflow-hidden flex flex-col min-w-0">
           <FloorPlanWorkspace
             floorPlan={floorPlan}
             activeTool={activeTool}
@@ -1493,8 +1657,28 @@ export const App: React.FC = () => {
         />
       </div>
 
+      {/* Bottom Application Status Bar */}
+      <AppStatusBar
+        storeInfo={storeInfo}
+        activeTool={activeTool}
+        mdfCount={mdfDevices.length}
+        idfCount={idfDevices.length}
+        apCount={accessPoints.length}
+        cablesCount={lanCables.length}
+        signalsCount={signalReadings.length}
+        floorScale={floorScale}
+        zoom={zoom}
+        isDirty={isDirty}
+        saveStatus={saveStatus}
+        lastSavedTime={lastSavedTime}
+        isExpandedWorkspace={isExpandedWorkspace}
+        onToggleExpandedWorkspace={handleToggleExpandedWorkspace}
+        onFitFloorPlan={handleFitFloorPlan}
+        onOpenScaleModal={() => setScaleModalOpen(true)}
+      />
+
       {/* PRINT VIEW COMPONENT (Visible exclusively in window.print()) */}
-      <div className="hidden print:block">
+      <div className="hidden print:block print-view-wrapper">
         <PrintView
           storeInfo={storeInfo}
           compositeDataUrl={printCompositeUrl || floorPlan?.backgroundDataUrl || ''}
@@ -1503,6 +1687,7 @@ export const App: React.FC = () => {
           accessPoints={accessPoints}
           signalReadings={signalReadings}
           lanCables={lanCables}
+          printConfig={activePrintConfig}
         />
       </div>
 
@@ -1633,13 +1818,16 @@ export const App: React.FC = () => {
         isOpen={printModalOpen}
         onClose={() => setPrintModalOpen(false)}
         storeInfo={storeInfo}
+        floorPlan={floorPlan}
         compositeDataUrl={printCompositeUrl || floorPlan?.backgroundDataUrl || ''}
         mdfDevices={mdfDevices}
         idfDevices={idfDevices}
         accessPoints={accessPoints}
         signalReadings={signalReadings}
         lanCables={lanCables}
+        visibility={visibility}
         onDownloadPng={handleExportPng}
+        onPrintConfigChange={setActivePrintConfig}
       />
 
       <PdfPageSelectModal

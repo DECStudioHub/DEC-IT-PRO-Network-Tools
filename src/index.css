@@ -11,37 +11,79 @@
 @media print {
   @page {
     size: A4 landscape;
-    margin: 8mm;
+    margin: 8mm 10mm;
   }
 
   html,
-  body {
+  body,
+  #root,
+  #root > div {
     background: #ffffff !important;
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow: visible !important;
+    position: static !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Completely hide all UI, navigation, tools, workspace, sidebar, overlays */
+  /* Completely hide all non-printable UI, navigation, tools, workspace, sidebar, modals */
   .no-print,
   header,
   aside,
   nav,
-  button {
+  button,
+  .interactive-marker,
+  .toast,
+  .backdrop-blur-xs {
     display: none !important;
   }
 
-  /* Force print report container to display with crisp layout */
+  /* Force print view wrapper and report container to display with crisp layout */
+  .print-view-wrapper,
   .print-report-container {
     display: block !important;
+    position: relative !important;
     width: 100% !important;
     max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
+    overflow: visible !important;
+  }
+
+  /* Multi-page separation architecture (#251) */
+  .print-page {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-height: 96vh !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Force images to scale nicely */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Table row breaks avoidance */
+  tr, td, th {
+    page-break-inside: avoid !important;
   }
 }
-

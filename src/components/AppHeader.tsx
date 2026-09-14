@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { StoreInfo } from '../types';
+import { APP_CURRENT_VERSION } from '../data/versionHistory';
 import {
   Radio,
   Save,
@@ -84,7 +85,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 WIFI HITMAP
               </span>
               <span className="rounded bg-slate-800 border border-slate-700 text-emerald-400 font-mono text-[9px] px-1 py-0.2 font-bold leading-none">
-                v1.0.1
+                {APP_CURRENT_VERSION}
               </span>
             </div>
           </div>
@@ -249,11 +250,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         {onOpenWhatsNew && (
           <button
             onClick={onOpenWhatsNew}
-            title="Version 1.0.1 — What's New & Release Notes"
+            title={`Version ${APP_CURRENT_VERSION} — What's New & Release Notes`}
             className="hidden xl:flex items-center gap-1 rounded-md bg-slate-800 hover:bg-slate-700 px-2 py-1 text-[11px] font-medium text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
           >
             <History className="h-3 w-3 text-blue-400" />
-            <span>v1.0.1</span>
+            <span>{APP_CURRENT_VERSION}</span>
           </button>
         )}
 
