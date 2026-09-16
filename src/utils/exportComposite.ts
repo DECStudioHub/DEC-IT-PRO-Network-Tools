@@ -18,6 +18,61 @@ import {
   clampTextSize,
 } from '../types';
 import { renderHeatmapToCanvas } from './heatmapRenderer';
+import { hexToRgba } from './deviceIcons';
+
+/**
+ * Draws an authentic 3-arc WiFi signal icon + center dot directly on canvas.
+ * Perfectly mirrors WifiSignalIcon with crisp scalable arcs.
+ */
+function drawWifiSignalOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  bars: 1 | 2 | 3
+) {
+  const activeColor = bars === 3 ? '#16a34a' : bars === 2 ? '#ca8a04' : '#dc2626';
+  const inactiveColor = '#cbd5e1';
+  const strokeW = Math.max(1.8, Math.round(size * 0.12));
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Base center dot
+  const dotR = Math.max(1.8, size * 0.08);
+  const baseY = cy + size * 0.36;
+  ctx.fillStyle = activeColor;
+  ctx.beginPath();
+  ctx.arc(cx, baseY, dotR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Arcs angles
+  const startAngle = Math.PI * 1.25; // 225 deg
+  const endAngle = Math.PI * 1.75;   // 315 deg
+
+  ctx.lineWidth = strokeW;
+
+  // Inner Arc (1st bar - always active)
+  ctx.strokeStyle = activeColor;
+  ctx.beginPath();
+  ctx.arc(cx, baseY, size * 0.32, startAngle, endAngle);
+  ctx.stroke();
+
+  // Middle Arc (2nd bar - active for 2 and 3)
+  ctx.strokeStyle = bars >= 2 ? activeColor : inactiveColor;
+  ctx.beginPath();
+  ctx.arc(cx, baseY, size * 0.58, startAngle, endAngle);
+  ctx.stroke();
+
+  // Outer Arc (3rd bar - active only for 3)
+  ctx.strokeStyle = bars >= 3 ? activeColor : inactiveColor;
+  ctx.beginPath();
+  ctx.arc(cx, baseY, size * 0.84, startAngle, endAngle);
+  ctx.stroke();
+
+  ctx.restore();
+}
 
 /**
  * Generates a high-resolution composite canvas/PNG of the floor plan with all active overlays.
@@ -184,7 +239,7 @@ export async function generateCompositePng(
       const borderWidth = app.enableBorder !== false ? (app.borderWidth || 2.5) : 0;
 
       // Draw Background
-      ctx.fillStyle = app.bgColor || '#0f172a';
+      ctx.fillStyle = hexToRgba(app.bgColor || '#0f172a', app.bgOpacity ?? 95);
       ctx.strokeStyle = outlineColor;
       ctx.lineWidth = borderWidth;
       ctx.beginPath();
@@ -241,7 +296,7 @@ export async function generateCompositePng(
       const outlineColor = app.borderColor || '#2dd4bf';
       const borderWidth = app.enableBorder !== false ? (app.borderWidth || 2.5) : 0;
 
-      ctx.fillStyle = app.bgColor || '#042f2e';
+      ctx.fillStyle = hexToRgba(app.bgColor || '#042f2e', app.bgOpacity ?? 95);
       ctx.strokeStyle = outlineColor;
       ctx.lineWidth = borderWidth;
       ctx.beginPath();
@@ -262,7 +317,7 @@ export async function generateCompositePng(
       const lblW = Math.max(72, idWidth + 20);
       const lblH = labelTextSize + 14;
 
-      ctx.fillStyle = '#042f2e';
+      ctx.fillStyle = hexToRgba('#042f2e', app.bgOpacity ?? 95);
       ctx.strokeStyle = outlineColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -296,7 +351,7 @@ export async function generateCompositePng(
       const borderWidth = app.enableBorder !== false ? (app.borderWidth || 2) : 0;
 
       // Outer circle / badge
-      ctx.fillStyle = accentColor;
+      ctx.fillStyle = hexToRgba(app.bgColor || accentColor, app.bgOpacity ?? 95);
       ctx.strokeStyle = outlineColor;
       ctx.lineWidth = borderWidth;
       ctx.beginPath();
@@ -317,7 +372,7 @@ export async function generateCompositePng(
       const lblW = idWidth + 14;
       const lblH = labelTextSize + 8;
 
-      ctx.fillStyle = '#0f172a';
+      ctx.fillStyle = hexToRgba('#0f172a', app.bgOpacity ?? 95);
       ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -341,39 +396,100 @@ export async function generateCompositePng(
 
       const app = sig.appearance || appearanceSettings?.defaultSignal || {};
       const textSize = clampTextSize(app.textSize, 12);
-      const iconSize = clampIconSize(app.iconSize, 17);
+      const iconSize = clampIconSize(app.iconSize, 18);
+      const hasBorder = app.enableBorder !== false;
+      const borderWidth = hasBorder ? (app.borderWidth || 1) : 0;
+      const borderColor = app.borderColor || '#cbd5e1';
+      const bgColor = hexToRgba(app.bgColor || '#ffffff', app.bgOpacity ?? 95);
+      const textColor = app.textColor || '#000000';
 
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = '#94a3b8';
-      ctx.lineWidth = 1.2;
-      const rw = textSize * 3.1 + (visibility.showWifiBars ? iconSize + 6 : 6);
-      const rh = Math.max(textSize + 10, 22);
-      ctx.beginPath();
-      ctx.roundRect(cx - rw / 2, cy - rh / 2, rw, rh, 4);
-      ctx.fill();
-      ctx.stroke();
+      const hasDbm = typeof sig.dbm === 'number';
+      const hasSpeed = typeof sig.speedMbps === 'number';
+      const hasTechData = hasDbm || hasSpeed;
 
-      // Signal Number with %
-      if (visibility.showSignalValues) {
-        ctx.fillStyle = app.textColor || '#000000';
-        ctx.font = `${app.fontWeight === 'bold' || app.fontWeight === 'black' ? 'bold ' : ''}${textSize}px monospace`;
-        ctx.textAlign = 'left';
-        ctx.fillText(`${sig.signal}%`, cx - rw / 2 + 5, cy + textSize / 3);
+      // Font calculations
+      const fontPrefix = app.fontWeight === 'bold' || app.fontWeight === 'black' ? 'bold ' : '';
+      ctx.font = `${fontPrefix}${textSize}px monospace`;
+      const numText = `${sig.signal}%`;
+      const numWidth = visibility.showSignalValues ? ctx.measureText(numText).width : 0;
+
+      // Tech data font & measurements
+      const techTextSize = Math.max(9, Math.round(textSize * 0.72));
+      let techWidth = 0;
+      if (hasTechData) {
+        ctx.font = `bold ${techTextSize}px monospace`;
+        const dbmStr = hasDbm ? `${sig.dbm}dBm` : '';
+        const speedStr = hasSpeed ? `${sig.speedMbps}M` : '';
+        techWidth = Math.max(
+          hasDbm ? ctx.measureText(dbmStr).width : 0,
+          hasSpeed ? ctx.measureText(speedStr).width : 0
+        ) + 6;
       }
 
-      // Bar color indicator
+      // Calculate total badge dimensions
+      const paddingX = 7;
+      const gap = 5;
+      let contentW = 0;
+      if (visibility.showSignalValues) contentW += numWidth;
+      if (visibility.showSignalValues && visibility.showWifiBars) contentW += gap;
+      if (visibility.showWifiBars) contentW += iconSize;
+      if (hasTechData) contentW += gap + techWidth;
+
+      const rw = Math.max(34, contentW + paddingX * 2);
+      const rh = Math.max(22, Math.max(textSize, iconSize) + 8);
+
+      // Draw Badge Background & Border
+      ctx.fillStyle = bgColor;
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = borderWidth;
+      ctx.beginPath();
+      ctx.roundRect(cx - rw / 2, cy - rh / 2, rw, rh, 5);
+      ctx.fill();
+      if (borderWidth > 0) ctx.stroke();
+
+      // Render items from left to right inside badge
+      let curX = cx - rw / 2 + paddingX;
+
+      // 1. Signal Number
+      if (visibility.showSignalValues) {
+        ctx.fillStyle = textColor;
+        ctx.font = `${fontPrefix}${textSize}px monospace`;
+        ctx.textAlign = 'left';
+        ctx.fillText(numText, curX, cy + textSize * 0.34);
+        curX += numWidth + gap;
+      }
+
+      // 2. Authentic WiFi Arc Icon (concentric curved arcs + dot)
       if (visibility.showWifiBars) {
-        const barColor = sig.bars === 3 ? '#16a34a' : sig.bars === 2 ? '#d97706' : '#dc2626';
-        const startX = cx + rw / 2 - iconSize - 2;
-        ctx.fillStyle = barColor;
-        for (let b = 1; b <= 3; b++) {
-          if (b <= sig.bars) {
-            ctx.fillRect(startX + (b - 1) * 4, cy + 4 - b * 3, 3, b * 3);
-          } else {
-            ctx.fillStyle = '#cbd5e1';
-            ctx.fillRect(startX + (b - 1) * 4, cy + 4 - b * 3, 3, b * 3);
-            ctx.fillStyle = barColor;
-          }
+        const iconCx = curX + iconSize / 2;
+        const iconCy = cy;
+        drawWifiSignalOnCanvas(ctx, iconCx, iconCy, iconSize, sig.bars);
+        curX += iconSize + gap;
+      }
+
+      // 3. Technical Data (dBm and Mbps)
+      if (hasTechData) {
+        // Divider line
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(curX - 2, cy - rh * 0.35);
+        ctx.lineTo(curX - 2, cy + rh * 0.35);
+        ctx.stroke();
+
+        ctx.font = `bold ${techTextSize}px monospace`;
+        ctx.textAlign = 'left';
+        if (hasDbm && hasSpeed) {
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(`${sig.dbm}dBm`, curX + 2, cy - 1);
+          ctx.fillStyle = '#2563eb';
+          ctx.fillText(`${sig.speedMbps}M`, curX + 2, cy + techTextSize - 1);
+        } else if (hasDbm) {
+          ctx.fillStyle = '#64748b';
+          ctx.fillText(`${sig.dbm}dBm`, curX + 2, cy + techTextSize * 0.35);
+        } else if (hasSpeed) {
+          ctx.fillStyle = '#2563eb';
+          ctx.fillText(`${sig.speedMbps}M`, curX + 2, cy + techTextSize * 0.35);
         }
       }
     });

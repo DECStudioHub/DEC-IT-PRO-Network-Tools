@@ -82,6 +82,28 @@ export function getCableIconComponent(style?: string): React.ComponentType<any> 
   return Cable;
 }
 
+export function hexToRgba(color: string, opacityPercent: number = 100): string {
+  const alpha = Math.max(0, Math.min(1, (opacityPercent ?? 100) / 100));
+  if (!color || color === 'transparent') return 'transparent';
+  if (color.startsWith('#')) {
+    let hex = color.slice(1);
+    if (hex.length === 3) hex = hex.split('').map((c) => c + c).join('');
+    if (hex.length === 6) {
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+  }
+  if (color.startsWith('rgb(')) {
+    return color.replace('rgb(', 'rgba(').replace(')', `, ${alpha})`);
+  }
+  if (color.startsWith('rgba(')) {
+    return color.replace(/[\d\.]+\)$/, `${alpha})`);
+  }
+  return color;
+}
+
 export interface DeviceIconBoxProps {
   type: 'mdf' | 'idf' | 'ap' | 'cable';
   appearance?: ItemAppearance;
@@ -111,6 +133,7 @@ export const DeviceIconBox: React.FC<DeviceIconBoxProps> = ({
   const borderColor = appearance.borderColor || activeDefault.border;
   const hasBorder = appearance.enableBorder !== false;
   const borderWidth = hasBorder ? appearance.borderWidth || 2 : 0;
+  const opacityPercent = appearance.bgOpacity ?? 95;
 
   // Background resolution
   let bgStyle: React.CSSProperties = {};
@@ -118,25 +141,21 @@ export const DeviceIconBox: React.FC<DeviceIconBoxProps> = ({
 
   const bgType = appearance.iconBgType || (type === 'ap' ? 'custom' : 'dark-square');
 
-  if (bgType === 'none') {
-    bgStyle = { background: 'transparent' };
-  } else if (bgType === 'transparent') {
-    bgStyle = { background: 'transparent' };
+  if (bgType === 'none' || bgType === 'transparent') {
+    bgStyle = { backgroundColor: 'transparent' };
   } else if (bgType === 'white-circle') {
-    bgStyle = { backgroundColor: '#ffffff' };
+    bgStyle = { backgroundColor: hexToRgba('#ffffff', opacityPercent) };
     shapeClasses = 'rounded-full';
   } else if (bgType === 'white-square') {
-    bgStyle = { backgroundColor: '#ffffff' };
+    bgStyle = { backgroundColor: hexToRgba('#ffffff', opacityPercent) };
     shapeClasses = 'rounded-xl';
   } else if (bgType === 'dark-square') {
-    bgStyle = { backgroundColor: '#020617' };
+    bgStyle = { backgroundColor: hexToRgba('#020617', opacityPercent) };
     shapeClasses = 'rounded-xl';
   } else if (bgType === 'custom') {
     const rawBg = appearance.bgColor || activeDefault.bg;
-    const opacity = (appearance.bgOpacity ?? 95) / 100;
     bgStyle = {
-      backgroundColor: rawBg,
-      opacity,
+      backgroundColor: hexToRgba(rawBg, opacityPercent),
     };
     shapeClasses = type === 'ap' ? 'rounded-full' : 'rounded-xl';
   }

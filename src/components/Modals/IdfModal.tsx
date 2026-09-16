@@ -65,6 +65,7 @@ export const IdfModal: React.FC<IdfModalProps> = ({
       description: description.trim() || 'Switch Hub for Selling Area',
       position: initialData ? initialData.position : position,
       notes: notes.trim() || undefined,
+      appearance: initialData?.appearance,
     });
     onClose();
   };

@@ -64,6 +64,35 @@ export const PrintView: React.FC<PrintViewProps> = ({
   const goodPct = totalReadings > 0 ? Math.round((goodCount / totalReadings) * 100) : 0;
   const weakPct = totalReadings > 0 ? Math.round((weakCount / totalReadings) * 100) : 0;
 
+  // Technical RF & Throughput calculations
+  let dbmSum = 0;
+  let dbmCount = 0;
+  let minDbm: number | undefined = undefined;
+  let maxDbm: number | undefined = undefined;
+
+  let speedSum = 0;
+  let speedCount = 0;
+  let minSpeed: number | undefined = undefined;
+  let maxSpeed: number | undefined = undefined;
+
+  signalReadings.forEach((s) => {
+    if (typeof s.dbm === 'number' && !isNaN(s.dbm)) {
+      dbmSum += s.dbm;
+      dbmCount++;
+      if (minDbm === undefined || s.dbm < minDbm) minDbm = s.dbm;
+      if (maxDbm === undefined || s.dbm > maxDbm) maxDbm = s.dbm;
+    }
+    if (typeof s.speedMbps === 'number' && !isNaN(s.speedMbps)) {
+      speedSum += s.speedMbps;
+      speedCount++;
+      if (minSpeed === undefined || s.speedMbps < minSpeed) minSpeed = s.speedMbps;
+      if (maxSpeed === undefined || s.speedMbps > maxSpeed) maxSpeed = s.speedMbps;
+    }
+  });
+
+  const avgDbm = dbmCount > 0 ? Math.round((dbmSum / dbmCount) * 10) / 10 : undefined;
+  const avgSpeed = speedCount > 0 ? Math.round((speedSum / speedCount) * 10) / 10 : undefined;
+
   // Decide which pages to show based on preset and options
   const showPage1 = options.includeFloorPlan || options.includeSignalLegend || options.includeInfrastructureLegend;
   const showPage2 =
@@ -340,6 +369,43 @@ export const PrintView: React.FC<PrintViewProps> = ({
                 <span className="text-[10px] text-rose-600 block">{weakCount} points (0–39)</span>
               </div>
             </div>
+
+            {/* Optional RF Signal Power & Throughput Summary Cards */}
+            {(dbmCount > 0 || speedCount > 0) && (
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-600 uppercase block">
+                      Recorded RF Signal Power
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {dbmCount > 0 ? `Range: ${minDbm} to ${maxDbm} dBm (${dbmCount} points)` : 'No readings'}
+                    </span>
+                  </div>
+                  {avgDbm !== undefined && (
+                    <span className="text-lg font-black font-mono text-slate-900">
+                      {avgDbm} <span className="text-[10px] font-normal text-slate-500">dBm avg</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-2.5 rounded-lg border border-blue-200 bg-blue-50/50 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold text-blue-700 uppercase block">
+                      Measured Data Throughput
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      {speedCount > 0 ? `Range: ${minSpeed} to ${maxSpeed} Mbps (${speedCount} tests)` : 'No tests'}
+                    </span>
+                  </div>
+                  {avgSpeed !== undefined && (
+                    <span className="text-lg font-black font-mono text-blue-700">
+                      {avgSpeed} <span className="text-[10px] font-normal text-slate-500">Mbps avg</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Key Engineering Insights */}
             {options.includeInsights && (

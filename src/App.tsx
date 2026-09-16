@@ -1700,79 +1700,112 @@ export const App: React.FC = () => {
         existingCount={mdfDevices.length}
         onSave={(device) => {
           if (editingMdf) {
-            setMdfDevices((prev) => prev.map((d) => (d.id === device.id ? device : d)));
+            setMdfDevices((prev) =>
+              prev.map((d) => (d.id === editingMdf.id ? { ...d, ...device, appearance: device.appearance || d.appearance } : d))
+            );
             recordHistoryAction('Update MDF');
           } else {
             setMdfDevices((prev) => [...prev, device]);
             recordHistoryAction('Add MDF');
           }
+          setMdfModalOpen(false);
+          setEditingMdf(null);
         }}
         onDelete={(id) => {
           setMdfDevices((prev) => prev.filter((d) => d.id !== id));
           recordHistoryAction('Delete MDF');
+          setMdfModalOpen(false);
+          setEditingMdf(null);
         }}
       />
 
       <IdfModal
         isOpen={idfModalOpen}
-        onClose={() => setIdfModalOpen(false)}
+        onClose={() => {
+          setIdfModalOpen(false);
+          setEditingIdf(null);
+        }}
         initialData={editingIdf}
         position={targetPos}
         existingCount={idfDevices.length}
         onSave={(device) => {
           if (editingIdf) {
-            setIdfDevices((prev) => prev.map((d) => (d.id === device.id ? device : d)));
+            setIdfDevices((prev) =>
+              prev.map((d) => (d.id === editingIdf.id ? { ...d, ...device, appearance: device.appearance || d.appearance } : d))
+            );
             recordHistoryAction('Update IDF');
           } else {
             setIdfDevices((prev) => [...prev, device]);
             recordHistoryAction('Add IDF');
           }
+          setIdfModalOpen(false);
+          setEditingIdf(null);
         }}
         onDelete={(id) => {
           setIdfDevices((prev) => prev.filter((d) => d.id !== id));
           recordHistoryAction('Delete IDF');
+          setIdfModalOpen(false);
+          setEditingIdf(null);
         }}
       />
 
       <ApModal
         isOpen={apModalOpen}
-        onClose={() => setApModalOpen(false)}
+        onClose={() => {
+          setApModalOpen(false);
+          setEditingAp(null);
+        }}
         initialData={editingAp}
         position={targetPos}
         existingCount={accessPoints.length}
         onSave={(ap) => {
           if (editingAp) {
-            setAccessPoints((prev) => prev.map((d) => (d.id === ap.id ? ap : d)));
+            setAccessPoints((prev) =>
+              prev.map((d) => (d.id === editingAp.id ? { ...d, ...ap, appearance: ap.appearance || d.appearance } : d))
+            );
             recordHistoryAction('Update Access Point');
           } else {
             setAccessPoints((prev) => [...prev, ap]);
             recordHistoryAction('Add Access Point');
           }
+          setApModalOpen(false);
+          setEditingAp(null);
         }}
         onDelete={(id) => {
           setAccessPoints((prev) => prev.filter((d) => d.id !== id));
           recordHistoryAction('Delete Access Point');
+          setApModalOpen(false);
+          setEditingAp(null);
         }}
       />
 
       <SignalModal
         isOpen={signalModalOpen}
-        onClose={() => setSignalModalOpen(false)}
+        onClose={() => {
+          setSignalModalOpen(false);
+          setEditingSignal(null);
+        }}
         initialData={editingSignal}
         position={targetPos}
         existingCount={signalReadings.length}
         onSave={(reading) => {
           if (editingSignal) {
-            setSignalReadings((prev) => prev.map((d) => (d.id === reading.id ? reading : d)));
+            setSignalReadings((prev) =>
+              prev.map((d) => (d.id === editingSignal.id ? { ...d, ...reading, appearance: reading.appearance || d.appearance } : d))
+            );
             recordHistoryAction('Update Signal');
           } else {
             setSignalReadings((prev) => [...prev, reading]);
             recordHistoryAction('Add Signal');
           }
+          setSignalModalOpen(false);
+          setEditingSignal(null);
         }}
         onDelete={(id) => {
           setSignalReadings((prev) => prev.filter((d) => d.id !== id));
           recordHistoryAction('Delete Signal');
+          setSignalModalOpen(false);
+          setEditingSignal(null);
         }}
       />
 
@@ -1794,7 +1827,9 @@ export const App: React.FC = () => {
         existingCables={lanCables}
         onSaveCable={(cable) => {
           if (editingCable) {
-            setLanCables((prev) => prev.map((c) => (c.id === cable.id ? cable : c)));
+            setLanCables((prev) =>
+              prev.map((c) => (c.id === editingCable.id ? { ...c, ...cable, appearance: cable.appearance || c.appearance } : c))
+            );
             recordHistoryAction('Update LAN Cable');
           } else {
             setLanCables((prev) => [...prev, cable]);

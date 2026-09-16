@@ -88,6 +88,7 @@ export const SignalModal: React.FC<SignalModalProps> = ({
       notes: notes.trim() || undefined,
       dbm: !isNaN(parsedDbm as number) ? parsedDbm : undefined,
       speedMbps: !isNaN(parsedSpeed as number) ? parsedSpeed : undefined,
+      appearance: initialData?.appearance,
     });
     onClose();
   };

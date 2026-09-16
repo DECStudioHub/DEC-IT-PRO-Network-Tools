@@ -28,6 +28,7 @@ import {
   getMdfIconComponent,
   getIdfIconComponent,
   getApIconComponent,
+  hexToRgba,
 } from '../utils/deviceIcons';
 import {
   Server,
@@ -873,9 +874,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
           {/* MDF SERVER CABINET MARKERS (#56, #59, #68, #128, #136, v1.0.2) */}
           {visibility.showMdf &&
             mdfDevices.map((mdf) => {
-              if (!mdf?.position || typeof mdf.position.x !== 'number') return null;
-              const posX = mdf.position.x * planW;
-              const posY = mdf.position.y * planH;
+              const rawX = Number(mdf?.position?.x);
+              const rawY = Number(mdf?.position?.y);
+              if (isNaN(rawX) || isNaN(rawY)) return null;
+              const posX = rawX * planW;
+              const posY = rawY * planH;
               const mdfApp = mdf.appearance || appearanceSettings?.defaultMdf || {};
 
               return (
@@ -916,9 +919,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
           {/* IDF SWITCH HUB MARKERS (#57, #60, #69, #128, #137, v1.0.2) */}
           {visibility.showIdf &&
             idfDevices.map((idf) => {
-              if (!idf?.position || typeof idf.position.x !== 'number') return null;
-              const posX = idf.position.x * planW;
-              const posY = idf.position.y * planH;
+              const rawX = Number(idf?.position?.x);
+              const rawY = Number(idf?.position?.y);
+              if (isNaN(rawX) || isNaN(rawY)) return null;
+              const posX = rawX * planW;
+              const posY = rawY * planH;
               const idfApp = idf.appearance || appearanceSettings?.defaultIdf || {};
 
               return (
@@ -959,9 +964,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
           {/* ACCESS POINT MARKERS (#18, #19, #128, #138, v1.0.2) */}
           {visibility.showAps &&
             accessPoints.map((ap) => {
-              if (!ap?.position || typeof ap.position.x !== 'number') return null;
-              const posX = ap.position.x * planW;
-              const posY = ap.position.y * planH;
+              const rawX = Number(ap?.position?.x);
+              const rawY = Number(ap?.position?.y);
+              if (isNaN(rawX) || isNaN(rawY)) return null;
+              const posX = rawX * planW;
+              const posY = rawY * planH;
               const apApp = ap.appearance || appearanceSettings?.defaultAp || {};
 
               return (
@@ -1001,14 +1008,20 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
           {/* WIFI SIGNAL READINGS (Black number + 3-state WiFi icon) */}
           {(visibility.showSignalValues || visibility.showWifiBars) &&
             signalReadings.map((sig) => {
-              if (!sig?.position || typeof sig.position.x !== 'number') return null;
-              const posX = sig.position.x * planW;
-              const posY = sig.position.y * planH;
+              const rawX = Number(sig?.position?.x);
+              const rawY = Number(sig?.position?.y);
+              if (isNaN(rawX) || isNaN(rawY)) return null;
+              const posX = rawX * planW;
+              const posY = rawY * planH;
 
               const sigApp = sig.appearance || appearanceSettings?.defaultSignal || {};
-              const textSize = sigApp.textSize || 12;
-              const iconSize = sigApp.iconSize || 17;
+              const textSize = clampTextSize(sigApp.textSize, 12);
+              const iconSize = clampIconSize(sigApp.iconSize, 18);
               const textColor = sigApp.textColor || '#000000';
+              const hasBorder = sigApp.enableBorder !== false;
+              const borderCol = hasBorder ? (sigApp.borderColor || '#cbd5e1') : 'transparent';
+              const borderW = hasBorder ? (sigApp.borderWidth || 1) : 0;
+              const bgCol = hexToRgba(sigApp.bgColor || '#ffffff', sigApp.bgOpacity ?? 95);
 
               return (
                 <div
@@ -1017,6 +1030,10 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                     left: `${posX}px`,
                     top: `${posY}px`,
                     transform: 'translate(-50%, -50%)',
+                    backgroundColor: bgCol,
+                    borderColor: borderCol,
+                    borderWidth: `${borderW}px`,
+                    borderStyle: borderW > 0 ? 'solid' : 'none',
                   }}
                   onPointerDown={(e) => handleMarkerDragStart(e, 'signal', sig.id)}
                   onClick={(e) => {
@@ -1028,9 +1045,9 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                     }
                   }}
                   title={`Signal: ${sig.signal}% (${sig.classification})${sig.dbm !== undefined ? ` • ${sig.dbm} dBm` : ''}${sig.speedMbps !== undefined ? ` • ${sig.speedMbps} Mbps` : ''}${sig.location ? ` • ${sig.location}` : ''}`}
-                  className="interactive-marker group absolute pointer-events-auto flex items-center gap-1 cursor-pointer select-none rounded-md bg-white/95 backdrop-blur-xs px-1.5 py-0.5 border border-slate-300 shadow-md hover:scale-110 hover:border-slate-400 transition-all"
+                  className="interactive-marker group absolute pointer-events-auto flex items-center gap-1 cursor-pointer select-none rounded-md px-1.5 py-0.5 shadow-md hover:scale-110 transition-all"
                 >
-                  {/* Original Black Signal Number with % */}
+                  {/* Original Signal Number with % */}
                   {visibility.showSignalValues && (
                     <span
                       style={{ fontSize: `${textSize}px`, color: textColor }}
@@ -1049,6 +1066,18 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                         sig.bars === 3 ? '#16a34a' : sig.bars === 2 ? '#ca8a04' : '#dc2626'
                       }
                     />
+                  )}
+
+                  {/* Optional Technical Metrics (dBm / Mbps) */}
+                  {(typeof sig.dbm === 'number' || typeof sig.speedMbps === 'number') && (
+                    <span className="flex flex-col text-[9px] font-mono leading-tight pl-1 border-l border-slate-300/80">
+                      {typeof sig.dbm === 'number' && (
+                        <span className="text-slate-600 font-semibold">{sig.dbm}dBm</span>
+                      )}
+                      {typeof sig.speedMbps === 'number' && (
+                        <span className="text-blue-600 font-bold">{sig.speedMbps}M</span>
+                      )}
+                    </span>
                   )}
                 </div>
               );

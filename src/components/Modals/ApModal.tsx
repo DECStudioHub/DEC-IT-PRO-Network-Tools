@@ -64,6 +64,7 @@ export const ApModal: React.FC<ApModalProps> = ({
       ssid: ssid.trim() || 'STORE-WIFI',
       position: initialData ? initialData.position : position,
       notes: notes.trim() || undefined,
+      appearance: initialData?.appearance,
     });
     onClose();
   };

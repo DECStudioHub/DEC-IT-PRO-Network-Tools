@@ -44,9 +44,34 @@ export function analyzeHitmapData(
   let weakCount = 0;
   let signalSum = 0;
 
+  let dbmSum = 0;
+  let dbmCount = 0;
+  let minDbm: number | undefined = undefined;
+  let maxDbm: number | undefined = undefined;
+
+  let speedSum = 0;
+  let speedCount = 0;
+  let minSpeedMbps: number | undefined = undefined;
+  let maxSpeedMbps: number | undefined = undefined;
+
   signalReadings.forEach((r) => {
     const val = r.signal;
     signalSum += val;
+
+    if (typeof r.dbm === 'number' && !isNaN(r.dbm)) {
+      dbmSum += r.dbm;
+      dbmCount++;
+      if (minDbm === undefined || r.dbm < minDbm) minDbm = r.dbm;
+      if (maxDbm === undefined || r.dbm > maxDbm) maxDbm = r.dbm;
+    }
+
+    if (typeof r.speedMbps === 'number' && !isNaN(r.speedMbps)) {
+      speedSum += r.speedMbps;
+      speedCount++;
+      if (minSpeedMbps === undefined || r.speedMbps < minSpeedMbps) minSpeedMbps = r.speedMbps;
+      if (maxSpeedMbps === undefined || r.speedMbps > maxSpeedMbps) maxSpeedMbps = r.speedMbps;
+    }
+
     if (val >= 81) {
       strongCount++;
     } else if (val >= 40) {
@@ -60,6 +85,9 @@ export function analyzeHitmapData(
   const strongPercent = totalReadings > 0 ? Math.round((strongCount / totalReadings) * 100) : 0;
   const moderatePercent = totalReadings > 0 ? Math.round((moderateCount / totalReadings) * 100) : 0;
   const weakPercent = totalReadings > 0 ? Math.round((weakCount / totalReadings) * 100) : 0;
+
+  const averageDbm = dbmCount > 0 ? Math.round((dbmSum / dbmCount) * 10) / 10 : undefined;
+  const averageSpeedMbps = speedCount > 0 ? Math.round((speedSum / speedCount) * 10) / 10 : undefined;
 
   // 2. Determine Overall Status (#164, #165)
   let overallStatus: OverallHitmapStatus = 'INSUFFICIENT DATA';
@@ -94,6 +122,16 @@ export function analyzeHitmapData(
     averageSignal,
     overallStatus,
     statusDescription,
+    averageDbm,
+    minDbm,
+    maxDbm,
+    dbmCount,
+    readingsWithDbmCount: dbmCount,
+    averageSpeedMbps,
+    minSpeedMbps,
+    maxSpeedMbps,
+    speedCount,
+    readingsWithSpeedCount: speedCount,
   };
 
   // 3. Network Infrastructure & Cable Summary (#161, #162)
@@ -165,6 +203,18 @@ export function analyzeHitmapData(
       );
     } else {
       observations.push('Zero weak signal points detected in the currently recorded survey areas.');
+    }
+
+    if (dbmCount > 0 && averageDbm !== undefined) {
+      observations.push(
+        `Signal Power Level: Average ${averageDbm} dBm (Range: ${minDbm} dBm to ${maxDbm} dBm across ${dbmCount} measurement points).`
+      );
+    }
+
+    if (speedCount > 0 && averageSpeedMbps !== undefined) {
+      observations.push(
+        `Throughput Speed: Average ${averageSpeedMbps} Mbps (Range: ${minSpeedMbps} Mbps to ${maxSpeedMbps} Mbps across ${speedCount} speed tests).`
+      );
     }
 
     // Key Findings (#158, #163)

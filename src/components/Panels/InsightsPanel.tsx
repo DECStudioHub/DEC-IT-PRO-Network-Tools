@@ -206,6 +206,47 @@ export const InsightsPanel: React.FC<InsightsPanelProps> = ({
         </div>
       </div>
 
+      {/* TECHNICAL MEASUREMENTS (dBm & Speed Mbps) */}
+      {((signalAnalysis.dbmCount || 0) > 0 || (signalAnalysis.speedCount || 0) > 0) && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-2xs">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
+              Signal Power (dBm)
+            </div>
+            {signalAnalysis.averageDbm !== undefined ? (
+              <>
+                <div className="text-lg font-black text-slate-900 font-mono">
+                  {signalAnalysis.averageDbm} <span className="text-xs font-normal text-slate-500">dBm avg</span>
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono">
+                  {signalAnalysis.minDbm} to {signalAnalysis.maxDbm} dBm • {signalAnalysis.dbmCount} pts
+                </div>
+              </>
+            ) : (
+              <div className="text-xs text-slate-400 italic">No dBm recorded</div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-slate-200 bg-white p-2.5 shadow-2xs">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-blue-600 mb-0.5">
+              Throughput Speed
+            </div>
+            {signalAnalysis.averageSpeedMbps !== undefined ? (
+              <>
+                <div className="text-lg font-black text-blue-700 font-mono">
+                  {signalAnalysis.averageSpeedMbps} <span className="text-xs font-normal text-slate-500">Mbps avg</span>
+                </div>
+                <div className="text-[10px] text-slate-500 font-mono">
+                  {signalAnalysis.minSpeedMbps} to {signalAnalysis.maxSpeedMbps} Mbps • {signalAnalysis.speedCount} tests
+                </div>
+              </>
+            ) : (
+              <div className="text-xs text-slate-400 italic">No speed recorded</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* SIGNAL ANALYSIS KEY FINDINGS (#158, #163) */}
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-2xs space-y-3">
         <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">

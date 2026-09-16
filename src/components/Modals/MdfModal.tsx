@@ -61,6 +61,7 @@ export const MdfModal: React.FC<MdfModalProps> = ({
       description: description.trim() || 'Main Server Cabinet',
       position: initialData ? initialData.position : position,
       notes: notes.trim() || undefined,
+      appearance: initialData?.appearance,
     });
     onClose();
   };

@@ -251,6 +251,16 @@ export interface SignalAnalysisData {
   averageSignal: number;
   overallStatus: OverallHitmapStatus;
   statusDescription: string;
+  averageDbm?: number;
+  minDbm?: number;
+  maxDbm?: number;
+  readingsWithDbmCount?: number;
+  dbmCount?: number;
+  averageSpeedMbps?: number;
+  minSpeedMbps?: number;
+  maxSpeedMbps?: number;
+  readingsWithSpeedCount?: number;
+  speedCount?: number;
 }
 
 export interface NetworkSummaryData {
