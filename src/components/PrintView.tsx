@@ -37,6 +37,7 @@ interface PrintViewProps {
   accessPoints: AccessPoint[];
   signalReadings: SignalReading[];
   lanCables: LanCable[];
+  floorPlan?: any;
   printConfig?: PrintConfiguration;
   forceVisibleForPreview?: boolean;
 }
@@ -49,11 +50,30 @@ export const PrintView: React.FC<PrintViewProps> = ({
   accessPoints,
   signalReadings,
   lanCables,
+  floorPlan,
   printConfig = DEFAULT_PRINT_CONFIG,
   forceVisibleForPreview = false,
 }) => {
   const options = printConfig.options;
   const totalCableLength = lanCables.reduce((acc, c) => acc + (c.length || 0), 0);
+
+  const paperSize = printConfig.paperSize || 'A4';
+  const orientationSetting = printConfig.orientation || 'auto';
+  const effectiveOrientation: 'landscape' | 'portrait' = (() => {
+    if (orientationSetting === 'portrait') return 'portrait';
+    if (orientationSetting === 'landscape') return 'landscape';
+    // Auto orientation: based on floor plan aspect ratio (#325)
+    if (floorPlan && floorPlan.originalWidth && floorPlan.originalHeight) {
+      return floorPlan.originalWidth >= floorPlan.originalHeight ? 'landscape' : 'portrait';
+    }
+    return 'landscape';
+  })();
+
+  const marginsSetting = printConfig.margins || 'standard';
+  const marginCss =
+    marginsSetting === 'compact' ? '5mm' : marginsSetting === 'wide' ? '12mm' : '8mm 10mm';
+
+  const pageCssSize = paperSize === 'Tabloid' ? '11in 17in' : paperSize.toLowerCase();
 
   const totalReadings = signalReadings.length;
   const excellentCount = signalReadings.filter((s) => s.bars === 3).length;
@@ -111,6 +131,14 @@ export const PrintView: React.FC<PrintViewProps> = ({
         forceVisibleForPreview ? 'block' : 'hidden print:block'
       } w-full bg-white text-slate-900 font-sans print-report-container`}
     >
+      {/* Dynamic @page style reflecting user's chosen Paper Size, Margins, and Orientation (#325, #327, #329) */}
+      <style>{`
+        @page {
+          size: ${pageCssSize} ${effectiveOrientation};
+          margin: ${marginCss};
+        }
+      `}</style>
+
       {/* ========================================================================= */}
       {/* PAGE 1: FLOOR PLAN (DOMINANT VISUAL FOCUS) (#251)                          */}
       {/* ========================================================================= */}
@@ -134,13 +162,24 @@ export const PrintView: React.FC<PrintViewProps> = ({
                 </p>
               </div>
 
-              <div className="text-right text-xs">
+              {/* Clean, Non-Overlapping Date & Modification Block (#335-#337) */}
+              <div className="text-right text-xs space-y-0.5">
                 <span className="font-bold text-slate-900 block uppercase tracking-wider text-[10px]">
                   Site Engineering Survey
                 </span>
-                <span className="text-slate-500 text-[10px]">
+                <span className="text-slate-600 text-[10px] block font-medium">
                   Date: {storeInfo.assessmentDate || new Date().toLocaleDateString()}
                 </span>
+                {storeInfo.dateCreated && (
+                  <span className="text-slate-500 text-[9.5px] block font-normal">
+                    Created: {storeInfo.dateCreated}
+                  </span>
+                )}
+                {storeInfo.lastModified && (
+                  <span className="text-indigo-900 text-[9.5px] block font-semibold">
+                    Modified: {storeInfo.lastModified}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -189,7 +228,7 @@ export const PrintView: React.FC<PrintViewProps> = ({
               </div>
             </div>
 
-            {/* Visual Floor Plan (Takes 70% to 85% of available space) */}
+            {/* Visual Floor Plan (Takes 70% to 85% of available space) (#331, #332) */}
             {options.includeFloorPlan && (
               <div className="rounded-lg border border-slate-300 p-2 bg-white mb-3">
                 <div className="flex items-center justify-between mb-1 px-1">
@@ -197,16 +236,26 @@ export const PrintView: React.FC<PrintViewProps> = ({
                     FLOOR PLAN OVERLAY — INFRASTRUCTURE, DEVICES & SIGNAL READINGS
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono">
-                    High-Resolution 1:1 Scale
+                    High-Resolution 1:1 Scale • {paperSize} {effectiveOrientation.toUpperCase()}
                   </span>
                 </div>
 
                 {compositeDataUrl ? (
-                  <div className="flex justify-center bg-slate-50 rounded border border-slate-200 overflow-hidden max-h-[540px] print:max-h-[580px]">
+                  <div
+                    className={`flex justify-center bg-slate-50 rounded border border-slate-200 overflow-hidden ${
+                      effectiveOrientation === 'portrait'
+                        ? 'max-h-[700px] print:max-h-[740px]'
+                        : 'max-h-[580px] print:max-h-[620px]'
+                    }`}
+                  >
                     <img
                       src={compositeDataUrl}
                       alt="Floor Plan Network Composite"
-                      className="w-full h-auto object-contain max-h-[540px] print:max-h-[580px]"
+                      className={`w-full h-auto object-contain ${
+                        effectiveOrientation === 'portrait'
+                          ? 'max-h-[700px] print:max-h-[740px]'
+                          : 'max-h-[580px] print:max-h-[620px]'
+                      }`}
                     />
                   </div>
                 ) : (

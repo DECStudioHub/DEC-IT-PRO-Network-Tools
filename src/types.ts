@@ -33,6 +33,11 @@ export interface ItemAppearance {
   textOutline?: boolean;
   textShadow?: boolean;
   iconStyle?: string; // Icon identifier
+  // For signals (independent controls #340, #341, #342):
+  signalIconSize?: number; // 10 - 100 px
+  dbmTextSize?: number; // 8 - 100 px
+  mbpsTextSize?: number; // 8 - 100 px
+  labelTextSize?: number; // 8 - 100 px
   // For cables:
   lineColor?: string;
   lineStyle?: CableLineStyle;
@@ -63,6 +68,8 @@ export type PrintMode = 'complete' | 'standard' | 'floor-plan-only';
 export type PrintPreset = 'floor-plan-only' | 'standard-report' | 'complete-report';
 export type PrintOrientation = 'landscape' | 'portrait' | 'auto';
 export type PageOrientation = 'auto' | 'portrait' | 'landscape';
+export type PaperSize = 'A4' | 'A3' | 'A5' | 'Letter' | 'Legal' | 'Tabloid';
+export type PrintMargins = 'standard' | 'compact' | 'wide';
 export type PrintQuality = 'standard' | 'high-res';
 export type LegendPosition = 'bottom' | 'right' | 'separate-page';
 
@@ -89,9 +96,10 @@ export interface PrintConfiguration {
   mode: PrintMode;
   preset?: PrintPreset;
   orientation: PrintOrientation;
+  paperSize: PaperSize;
+  margins: PrintMargins;
   quality: PrintQuality;
   options: PrintContentOptions;
-  paperSize?: 'A4' | 'Letter' | 'Legal';
   content?: PrintContentOptions;
   legendPosition?: LegendPosition;
 }
@@ -99,9 +107,10 @@ export interface PrintConfiguration {
 export const DEFAULT_PRINT_CONFIG: PrintConfiguration = {
   mode: 'complete',
   preset: 'complete-report',
-  orientation: 'landscape',
-  quality: 'high-res',
+  orientation: 'auto',
   paperSize: 'A4',
+  margins: 'standard',
+  quality: 'high-res',
   options: {
     includeFloorPlan: true,
     includeSignalLegend: true,

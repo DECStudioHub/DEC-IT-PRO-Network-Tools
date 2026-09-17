@@ -4,6 +4,7 @@
  */
 
 import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import {
   FloorPlanDocument,
   MDFDevice,
@@ -14,6 +15,7 @@ import {
   VisibilitySettings,
   StoreInfo,
   HitmapInsights,
+  PrintConfiguration,
 } from '../types';
 import { analyzeHitmapData } from './insightsAnalyzer';
 import { generateCompositePng } from './exportComposite';
@@ -72,8 +74,90 @@ export async function generateAndDownloadPdfReport(
   visibility: VisibilitySettings,
   storeInfo: StoreInfo,
   settings: PdfExportSettings = DEFAULT_PDF_EXPORT_SETTINGS,
-  onProgress?: PdfProgressCallback
+  onProgress?: PdfProgressCallback,
+  printConfig?: PrintConfiguration
 ): Promise<string> {
+  onProgress?.('Preparing Master Print Layout...');
+
+  // =========================================================================
+  // PRIORITY #318 & #320: MASTER PRINT VIEW DIRECT PDF EXPORT
+  // Render the master PrintView DOM elements directly to PDF for 100% fidelity.
+  // =========================================================================
+  const masterContainers = document.querySelectorAll('.print-report-container');
+  let activeContainer: HTMLElement | null = null;
+  masterContainers.forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    if (htmlEl.offsetParent !== null || htmlEl.classList.contains('block') || !htmlEl.classList.contains('hidden')) {
+      activeContainer = htmlEl;
+    }
+  });
+
+  if (activeContainer) {
+    const pages = Array.from((activeContainer as HTMLElement).querySelectorAll('.print-page')) as HTMLElement[];
+    if (pages.length > 0) {
+      onProgress?.('Rendering Master Print Layout pages to high-resolution PDF...');
+
+      const paperSize = printConfig?.paperSize || 'A4';
+      const paperDimensions: Record<string, [number, number]> = {
+        A4: [210, 297],
+        A3: [297, 420],
+        A5: [148, 210],
+        Letter: [215.9, 279.4],
+        Legal: [215.9, 355.6],
+        Tabloid: [279.4, 431.8],
+      };
+
+      const baseDims = paperDimensions[paperSize] || [210, 297];
+      const orientationSetting = printConfig?.orientation || 'auto';
+      const effectiveOrientation: 'landscape' | 'portrait' = (() => {
+        if (orientationSetting === 'portrait') return 'portrait';
+        if (orientationSetting === 'landscape') return 'landscape';
+        if (floorPlan && floorPlan.originalWidth && floorPlan.originalHeight) {
+          return floorPlan.originalWidth >= floorPlan.originalHeight ? 'landscape' : 'portrait';
+        }
+        return 'landscape';
+      })();
+
+      const pageWidth =
+        effectiveOrientation === 'landscape'
+          ? Math.max(baseDims[0], baseDims[1])
+          : Math.min(baseDims[0], baseDims[1]);
+      const pageHeight =
+        effectiveOrientation === 'landscape'
+          ? Math.min(baseDims[0], baseDims[1])
+          : Math.max(baseDims[0], baseDims[1]);
+
+      const doc = new jsPDF({
+        orientation: effectiveOrientation,
+        unit: 'mm',
+        format: [pageWidth, pageHeight],
+      });
+
+      for (let i = 0; i < pages.length; i++) {
+        onProgress?.(`Rendering Page ${i + 1} of ${pages.length}...`);
+        const pageEl = pages[i];
+        const canvas = await html2canvas(pageEl, {
+          scale: 2.2, // ~300 DPI high resolution
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: effectiveOrientation === 'portrait' ? 840 : 1200,
+        });
+        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+        if (i > 0) {
+          doc.addPage([pageWidth, pageHeight], effectiveOrientation);
+        }
+        doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+      }
+
+      const filename = generateExportFilename(storeInfo, 'pdf');
+      doc.save(filename);
+      onProgress?.('Download complete!');
+      return filename;
+    }
+  }
+
+  // Fallback programmatic rendering (if DOM container is not mounted)
   onProgress?.('Preparing Floor Plan...');
 
   // 1. Determine orientation and page dimensions

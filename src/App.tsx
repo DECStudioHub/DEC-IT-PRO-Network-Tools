@@ -1756,6 +1756,7 @@ export const App: React.FC = () => {
           accessPoints={accessPoints}
           signalReadings={signalReadings}
           lanCables={lanCables}
+          floorPlan={floorPlan}
           printConfig={activePrintConfig}
         />
       </div>

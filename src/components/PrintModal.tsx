@@ -189,7 +189,9 @@ export const PrintModal: React.FC<PrintModalProps> = ({
             printConfig.options.includeInsights ||
             printConfig.options.includeRecommendations,
           includeLanCableSummary: printConfig.options.includeCableSchedule,
-        }
+        },
+        (msg) => setStatusMessage(msg),
+        printConfig
       );
       setStatusMessage('PDF report generated and downloaded successfully!');
       setTimeout(() => setStatusMessage(null), 4000);
@@ -377,24 +379,76 @@ export const PrintModal: React.FC<PrintModalProps> = ({
               </div>
             </div>
 
-            {/* Page Orientation */}
+            {/* Paper Size (#327) */}
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 block mb-1.5">
+                Paper Size
+              </label>
+              <div className="grid grid-cols-3 gap-1 text-xs">
+                {(['A4', 'A3', 'A5', 'Letter', 'Legal', 'Tabloid'] as const).map((size) => (
+                  <button
+                    key={`paper-${size}`}
+                    type="button"
+                    onClick={() => setPrintConfig({ ...printConfig, paperSize: size })}
+                    className={`py-1.5 rounded-lg border font-medium ${
+                      printConfig.paperSize === size
+                        ? 'border-blue-600 bg-blue-50 font-bold text-blue-800 shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Page Orientation (#325) */}
             <div>
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600 block mb-1.5">
                 Page Orientation
               </label>
               <div className="grid grid-cols-3 gap-1 text-xs">
-                {(['landscape', 'portrait', 'auto'] as PrintOrientation[]).map((orient) => (
+                {(['auto', 'landscape', 'portrait'] as PrintOrientation[]).map((orient) => (
                   <button
                     key={`orient-${orient}`}
                     type="button"
                     onClick={() => setPrintConfig({ ...printConfig, orientation: orient })}
                     className={`py-1.5 rounded-lg border capitalize ${
                       printConfig.orientation === orient
-                        ? 'border-blue-600 bg-blue-50 font-bold text-blue-800'
+                        ? 'border-blue-600 bg-blue-50 font-bold text-blue-800 shadow-2xs'
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
                     }`}
                   >
                     {orient}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Margins (#329) */}
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-600 block mb-1.5">
+                Print Margins
+              </label>
+              <div className="grid grid-cols-3 gap-1 text-xs">
+                {(
+                  [
+                    { id: 'standard', label: 'Standard (8mm)' },
+                    { id: 'compact', label: 'Compact (5mm)' },
+                    { id: 'wide', label: 'Wide (12mm)' },
+                  ] as const
+                ).map((m) => (
+                  <button
+                    key={`margin-${m.id}`}
+                    type="button"
+                    onClick={() => setPrintConfig({ ...printConfig, margins: m.id })}
+                    className={`py-1.5 px-1 text-[11px] rounded-lg border truncate ${
+                      (printConfig.margins || 'standard') === m.id
+                        ? 'border-blue-600 bg-blue-50 font-bold text-blue-800 shadow-2xs'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {m.label.split(' ')[0]}
                   </button>
                 ))}
               </div>
@@ -413,7 +467,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                     onClick={() => setPrintConfig({ ...printConfig, quality: q })}
                     className={`py-1.5 rounded-lg border capitalize ${
                       printConfig.quality === q
-                        ? 'border-blue-600 bg-blue-50 font-bold text-blue-800'
+                        ? 'border-blue-600 bg-blue-50 font-bold text-blue-800 shadow-2xs'
                         : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
                     }`}
                   >
@@ -427,15 +481,14 @@ export const PrintModal: React.FC<PrintModalProps> = ({
             <div className="flex items-start gap-2 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-[11px]">
               <Info className="h-4 w-4 shrink-0 text-blue-600 mt-0.5" />
               <span>
-                Select <strong>"Save as PDF"</strong> in your browser print destination to create a
-                vector-crisp multi-page PDF document.
+                <strong>"Print / Save to PDF"</strong> and <strong>"Download PDF"</strong> produce the exact same layout.
               </span>
             </div>
           </div>
 
           {/* Right Scrollable Document Preview Area */}
           <div className="flex-1 overflow-y-auto bg-slate-200 p-6 flex justify-center">
-            <div className="w-full max-w-4xl bg-white rounded-lg shadow-xl p-6 border border-slate-300">
+            <div className="w-full max-w-5xl bg-white rounded-lg shadow-xl p-6 border border-slate-300">
               <PrintView
                 storeInfo={storeInfo}
                 compositeDataUrl={compositeDataUrl}
@@ -444,6 +497,7 @@ export const PrintModal: React.FC<PrintModalProps> = ({
                 accessPoints={accessPoints}
                 signalReadings={signalReadings}
                 lanCables={lanCables}
+                floorPlan={floorPlan}
                 printConfig={printConfig}
                 forceVisibleForPreview={true}
               />

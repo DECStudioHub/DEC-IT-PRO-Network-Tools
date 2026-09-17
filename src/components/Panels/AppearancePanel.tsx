@@ -31,6 +31,7 @@ import {
   AP_ICON_STYLES,
   CABLE_ICON_STYLES,
 } from '../../utils/deviceIcons';
+import { WifiSignalIcon } from '../WifiSignalIcon';
 import {
   Palette,
   Type,
@@ -425,7 +426,15 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
               </div>
             ) : targetCategory === 'signal' ? (
               <div className="flex flex-col items-center gap-1.5">
-                <div className="flex items-center gap-1.5 rounded-md bg-white/95 px-2 py-1 border border-slate-300 shadow-md">
+                <div
+                  className="flex items-center gap-2 rounded-md px-2.5 py-1.5 shadow-md border"
+                  style={{
+                    backgroundColor: currentApp.bgColor || '#ffffff',
+                    opacity: (currentApp.bgOpacity ?? 95) / 100,
+                    borderColor: currentApp.enableBorder !== false ? (currentApp.borderColor || '#cbd5e1') : 'transparent',
+                    borderWidth: `${currentApp.enableBorder !== false ? (currentApp.borderWidth || 1) : 0}px`,
+                  }}
+                >
                   <span
                     style={{
                       fontSize: `${activeTextSize}px`,
@@ -436,13 +445,25 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
                   >
                     88%
                   </span>
-                  <Activity
-                    style={{
-                      width: `${activeIconSize * 0.6}px`,
-                      height: `${activeIconSize * 0.6}px`,
-                      color: '#16a34a',
-                    }}
+                  <WifiSignalIcon
+                    bars={3}
+                    size={activeIconSize}
+                    activeColor={currentApp.iconColor || '#16a34a'}
                   />
+                  <span className="flex flex-col font-mono leading-tight pl-1.5 border-l border-slate-300">
+                    <span
+                      style={{ fontSize: `${currentApp.dbmTextSize || Math.max(8, Math.round(activeTextSize * 0.75))}px` }}
+                      className="text-slate-700 font-semibold"
+                    >
+                      -58 dBm
+                    </span>
+                    <span
+                      style={{ fontSize: `${currentApp.mbpsTextSize || Math.max(8, Math.round(activeTextSize * 0.75))}px` }}
+                      className="text-blue-700 font-bold"
+                    >
+                      240 Mbps
+                    </span>
+                  </span>
                 </div>
                 <DeviceLabelBadge
                   label={selectedItemId || 'SIG-01'}
@@ -640,6 +661,99 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
           ))}
         </div>
       </div>
+
+      {/* 4B. SIGNAL DBM & MBPS TEXT SIZES (Requirement 340) */}
+      {targetCategory === 'signal' && (
+        <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+              <Activity className="h-3.5 w-3.5 text-indigo-600" />
+              dBm & Mbps Text Size (8 – 100 px)
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">Signal Metrics</span>
+          </div>
+
+          {/* dBm Text Size */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-700">dBm Text Size:</span>
+              <span className="font-mono text-indigo-700 font-bold">{currentApp.dbmTextSize || 10} px</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleFieldChange({ dbmTextSize: Math.max(8, (currentApp.dbmTextSize || 10) - 1) })}
+                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <input
+                type="range"
+                min="8"
+                max="100"
+                value={currentApp.dbmTextSize || 10}
+                onChange={(e) => handleFieldChange({ dbmTextSize: parseInt(e.target.value) || 10 })}
+                className="flex-1 accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+              />
+              <button
+                type="button"
+                onClick={() => handleFieldChange({ dbmTextSize: Math.min(100, (currentApp.dbmTextSize || 10) + 1) })}
+                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <input
+                type="number"
+                min="8"
+                max="100"
+                value={currentApp.dbmTextSize || 10}
+                onChange={(e) => handleFieldChange({ dbmTextSize: parseInt(e.target.value) || 10 })}
+                className="w-12 text-center text-xs font-mono font-bold text-indigo-700 rounded border border-slate-200 bg-slate-50 py-1"
+              />
+            </div>
+          </div>
+
+          {/* Mbps Text Size */}
+          <div className="space-y-1 pt-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-slate-700">Mbps Text Size:</span>
+              <span className="font-mono text-blue-700 font-bold">{currentApp.mbpsTextSize || 10} px</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleFieldChange({ mbpsTextSize: Math.max(8, (currentApp.mbpsTextSize || 10) - 1) })}
+                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <input
+                type="range"
+                min="8"
+                max="100"
+                value={currentApp.mbpsTextSize || 10}
+                onChange={(e) => handleFieldChange({ mbpsTextSize: parseInt(e.target.value) || 10 })}
+                className="flex-1 accent-blue-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+              />
+              <button
+                type="button"
+                onClick={() => handleFieldChange({ mbpsTextSize: Math.min(100, (currentApp.mbpsTextSize || 10) + 1) })}
+                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <input
+                type="number"
+                min="8"
+                max="100"
+                value={currentApp.mbpsTextSize || 10}
+                onChange={(e) => handleFieldChange({ mbpsTextSize: parseInt(e.target.value) || 10 })}
+                className="w-12 text-center text-xs font-mono font-bold text-blue-700 rounded border border-slate-200 bg-slate-50 py-1"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 5. ICON STYLE SELECTION (Requirement 267, 272) */}
       <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">

@@ -1050,9 +1050,12 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
               const posY = rawY * planH;
 
               const sigApp = sig.appearance || appearanceSettings?.defaultSignal || {};
-              const textSize = clampTextSize(sigApp.textSize, 12);
-              const iconSize = clampIconSize(sigApp.iconSize, 18);
+              const textSize = clampTextSize(sigApp.labelTextSize || sigApp.textSize, 12);
+              const iconSize = clampIconSize(sigApp.signalIconSize || sigApp.iconSize, 18);
+              const dbmSize = clampTextSize(sigApp.dbmTextSize || Math.max(8, Math.round(textSize * 0.75)), 10);
+              const mbpsSize = clampTextSize(sigApp.mbpsTextSize || Math.max(8, Math.round(textSize * 0.75)), 10);
               const textColor = sigApp.textColor || '#000000';
+              const iconColor = sigApp.iconColor || (sig.bars === 3 ? '#16a34a' : sig.bars === 2 ? '#ca8a04' : '#dc2626');
               const hasBorder = sigApp.enableBorder !== false;
               const borderCol = hasBorder ? (sigApp.borderColor || '#cbd5e1') : 'transparent';
               const borderW = hasBorder ? (sigApp.borderWidth || 1) : 0;
@@ -1085,7 +1088,7 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                     else onSelectSignal(sig);
                   }}
                   title={`Signal: ${sig.signal}% (${sig.classification})${sig.dbm !== undefined ? ` • ${sig.dbm} dBm` : ''}${sig.speedMbps !== undefined ? ` • ${sig.speedMbps} Mbps` : ''}${sig.location ? ` • ${sig.location}` : ''}`}
-                  className="interactive-marker group absolute pointer-events-auto flex items-center gap-1 cursor-pointer select-none rounded-md px-1.5 py-0.5 shadow-md hover:scale-110 transition-all"
+                  className="interactive-marker group absolute pointer-events-auto flex items-center gap-1.5 cursor-pointer select-none rounded-md px-2 py-1 shadow-md hover:scale-105 transition-all"
                 >
                   {/* Original Signal Number with % */}
                   {visibility.showSignalValues && (
@@ -1102,20 +1105,22 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                     <WifiSignalIcon
                       bars={sig.bars}
                       size={iconSize}
-                      activeColor={
-                        sig.bars === 3 ? '#16a34a' : sig.bars === 2 ? '#ca8a04' : '#dc2626'
-                      }
+                      activeColor={iconColor}
                     />
                   )}
 
-                  {/* Optional Technical Metrics (dBm / Mbps) */}
+                  {/* Technical Metrics (dBm / Mbps) */}
                   {(typeof sig.dbm === 'number' || typeof sig.speedMbps === 'number') && (
-                    <span className="flex flex-col text-[9px] font-mono leading-tight pl-1 border-l border-slate-300/80">
+                    <span className="flex flex-col font-mono leading-tight pl-1.5 border-l border-slate-300/80">
                       {typeof sig.dbm === 'number' && (
-                        <span className="text-slate-600 font-semibold">{sig.dbm}dBm</span>
+                        <span style={{ fontSize: `${dbmSize}px` }} className="text-slate-700 font-semibold whitespace-nowrap">
+                          {sig.dbm} dBm
+                        </span>
                       )}
                       {typeof sig.speedMbps === 'number' && (
-                        <span className="text-blue-600 font-bold">{sig.speedMbps}M</span>
+                        <span style={{ fontSize: `${mbpsSize}px` }} className="text-blue-700 font-bold whitespace-nowrap">
+                          {sig.speedMbps} Mbps
+                        </span>
                       )}
                     </span>
                   )}
