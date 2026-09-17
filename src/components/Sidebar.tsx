@@ -77,6 +77,12 @@ interface SidebarProps {
   onAddApClick: () => void;
   onOpenProjectDetails?: () => void;
   onOpenPrintReport?: () => void;
+  activeMainTab?: MainSidebarTab;
+  onActiveMainTabChange?: (tab: MainSidebarTab) => void;
+  activeAppearanceCategory?: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal';
+  onActiveAppearanceCategoryChange?: (cat: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal') => void;
+  onOpenEditModal?: (item: { type: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal'; id: string; name: string; appearance?: ItemAppearance }) => void;
+  onDeselectItem?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -108,9 +114,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onAddApClick,
   onOpenProjectDetails,
   onOpenPrintReport,
+  activeMainTab: externalMainTab,
+  onActiveMainTabChange,
+  activeAppearanceCategory,
+  onActiveAppearanceCategoryChange,
+  onOpenEditModal,
+  onDeselectItem,
 }) => {
-  // Primary Tabs (#157): [ Details ] [ Appearance ] [ Insights ] [ Summary ]
-  const [activeMainTab, setActiveMainTab] = useState<MainSidebarTab>('details');
+  // Primary Tabs (#157, #388 Default Appearance = VISIBLE): [ Details ] [ Appearance ] [ Insights ] [ Summary ]
+  const [internalMainTab, setInternalMainTab] = useState<MainSidebarTab>('appearance');
+  const activeMainTab = externalMainTab !== undefined ? externalMainTab : internalMainTab;
+  const setActiveMainTab = (tab: MainSidebarTab) => {
+    if (onActiveMainTabChange) {
+      onActiveMainTabChange(tab);
+    }
+    setInternalMainTab(tab);
+  };
   const [detailsSubTab, setDetailsSubTab] = useState<DetailsSubTab>('cables');
   const [cableSearch, setCableSearch] = useState('');
   const [expandedCableId, setExpandedCableId] = useState<string | null>(null);
@@ -587,7 +606,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {/* PRIMARY TAB 2: APPEARANCE & STYLE CUSTOMIZATION (#120-#140) */}
+        {/* PRIMARY TAB 2: APPEARANCE & STYLE CUSTOMIZATION (#120-#140, #371-#395) */}
         {activeMainTab === 'appearance' && (
           <div className="space-y-4">
             <AppearancePanel
@@ -597,6 +616,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onApplyToAllType={onApplyToAllType}
               onResetTypeToDefault={onResetTypeToDefault}
               selectedItem={selectedItem}
+              activeCategory={activeAppearanceCategory}
+              onActiveCategoryChange={onActiveAppearanceCategoryChange}
+              onOpenEditModal={onOpenEditModal}
+              onDeselectItem={onDeselectItem}
             />
           </div>
         )}

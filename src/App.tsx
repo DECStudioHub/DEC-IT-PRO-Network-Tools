@@ -36,7 +36,7 @@ import { AppHeader } from './components/AppHeader';
 import { Toolbar } from './components/Toolbar';
 import { FloorPlanWorkspace } from './components/FloorPlanWorkspace';
 import { FloorPlanLeftToolbar } from './components/FloorPlanLeftToolbar';
-import { Sidebar } from './components/Sidebar';
+import { Sidebar, MainSidebarTab } from './components/Sidebar';
 import { AppStatusBar } from './components/AppStatusBar';
 import { PrintView } from './components/PrintView';
 
@@ -134,9 +134,11 @@ export const App: React.FC = () => {
   // Cable drawing route in progress
   const [cableDrawingRoute, setCableDrawingRoute] = useState<LanCableRoutePoint[]>([]);
 
-  // Redesigned Sidebar controls (#79, #86, #87)
+  // Redesigned Sidebar controls (#79, #86, #87, #371-#395)
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(380);
+  const [activeSidebarTab, setActiveSidebarTab] = useState<MainSidebarTab>('appearance');
+  const [activeAppearanceCategory, setActiveAppearanceCategory] = useState<'mdf' | 'idf' | 'ap' | 'cable' | 'signal'>('mdf');
 
   // Left Vertical Toolbar state (#294-#304)
   const [isLeftToolbarCollapsed, setIsLeftToolbarCollapsed] = useState<boolean>(() => {
@@ -1524,26 +1526,71 @@ export const App: React.FC = () => {
             appearanceSettings={appearanceSettings}
             onSelectMdf={(mdf) => {
               setSelectedItemForStyle({ type: 'mdf', id: mdf.id, name: `${mdf.id} - ${mdf.name}`, appearance: mdf.appearance });
+              setActiveAppearanceCategory('mdf');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
+            }}
+            onEditMdf={(mdf) => {
+              setSelectedItemForStyle({ type: 'mdf', id: mdf.id, name: `${mdf.id} - ${mdf.name}`, appearance: mdf.appearance });
+              setActiveAppearanceCategory('mdf');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
               setEditingMdf(mdf);
               setMdfModalOpen(true);
             }}
             onSelectIdf={(idf) => {
               setSelectedItemForStyle({ type: 'idf', id: idf.id, name: `${idf.id} - ${idf.name}`, appearance: idf.appearance });
+              setActiveAppearanceCategory('idf');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
+            }}
+            onEditIdf={(idf) => {
+              setSelectedItemForStyle({ type: 'idf', id: idf.id, name: `${idf.id} - ${idf.name}`, appearance: idf.appearance });
+              setActiveAppearanceCategory('idf');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
               setEditingIdf(idf);
               setIdfModalOpen(true);
             }}
             onSelectAp={(ap) => {
               setSelectedItemForStyle({ type: 'ap', id: ap.id, name: `${ap.id} - ${ap.name}`, appearance: ap.appearance });
+              setActiveAppearanceCategory('ap');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
+            }}
+            onEditAp={(ap) => {
+              setSelectedItemForStyle({ type: 'ap', id: ap.id, name: `${ap.id} - ${ap.name}`, appearance: ap.appearance });
+              setActiveAppearanceCategory('ap');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
               setEditingAp(ap);
               setApModalOpen(true);
             }}
             onSelectSignal={(sig) => {
               setSelectedItemForStyle({ type: 'signal', id: sig.id, name: `${sig.id} - ${sig.ssid}`, appearance: sig.appearance });
+              setActiveAppearanceCategory('signal');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
+            }}
+            onEditSignal={(sig) => {
+              setSelectedItemForStyle({ type: 'signal', id: sig.id, name: `${sig.id} - ${sig.ssid}`, appearance: sig.appearance });
+              setActiveAppearanceCategory('signal');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
               setEditingSignal(sig);
               setSignalModalOpen(true);
             }}
             onSelectCable={(cable) => {
               setSelectedItemForStyle({ type: 'cable', id: cable.id, name: `${cable.id} - ${cable.cableType}`, appearance: cable.appearance });
+              setActiveAppearanceCategory('cable');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
+            }}
+            onEditCable={(cable) => {
+              setSelectedItemForStyle({ type: 'cable', id: cable.id, name: `${cable.id} - ${cable.cableType}`, appearance: cable.appearance });
+              setActiveAppearanceCategory('cable');
+              setActiveSidebarTab('appearance');
+              setSidebarOpen(true);
               setEditingCable(cable);
               setPendingRoute(cable.route);
               setCableModalOpen(true);
@@ -1625,26 +1672,48 @@ export const App: React.FC = () => {
             }
           }}
           selectedItem={selectedItemForStyle}
+          activeMainTab={activeSidebarTab}
+          onActiveMainTabChange={setActiveSidebarTab}
+          activeAppearanceCategory={activeAppearanceCategory}
+          onActiveAppearanceCategoryChange={setActiveAppearanceCategory}
+          onOpenEditModal={(item) => {
+            if (item.type === 'mdf') {
+              const m = mdfDevices.find((d) => d.id === item.id);
+              if (m) { setEditingMdf(m); setMdfModalOpen(true); }
+            } else if (item.type === 'idf') {
+              const idf = idfDevices.find((d) => d.id === item.id);
+              if (idf) { setEditingIdf(idf); setIdfModalOpen(true); }
+            } else if (item.type === 'ap') {
+              const ap = accessPoints.find((a) => a.id === item.id);
+              if (ap) { setEditingAp(ap); setApModalOpen(true); }
+            } else if (item.type === 'signal') {
+              const sig = signalReadings.find((s) => s.id === item.id);
+              if (sig) { setEditingSignal(sig); setSignalModalOpen(true); }
+            } else if (item.type === 'cable') {
+              const cab = lanCables.find((c) => c.id === item.id);
+              if (cab) { setEditingCable(cab); setPendingRoute(cab.route); setCableModalOpen(true); }
+            }
+          }}
+          onDeselectItem={() => setSelectedItemForStyle(null)}
           onSelectMdf={(mdf) => {
             setSelectedItemForStyle({ type: 'mdf', id: mdf.id, name: `${mdf.id} - ${mdf.name}`, appearance: mdf.appearance });
-            setEditingMdf(mdf);
-            setMdfModalOpen(true);
+            setActiveAppearanceCategory('mdf');
+            setActiveSidebarTab('appearance');
           }}
           onSelectIdf={(idf) => {
             setSelectedItemForStyle({ type: 'idf', id: idf.id, name: `${idf.id} - ${idf.name}`, appearance: idf.appearance });
-            setEditingIdf(idf);
-            setIdfModalOpen(true);
+            setActiveAppearanceCategory('idf');
+            setActiveSidebarTab('appearance');
           }}
           onSelectAp={(ap) => {
             setSelectedItemForStyle({ type: 'ap', id: ap.id, name: `${ap.id} - ${ap.name}`, appearance: ap.appearance });
-            setEditingAp(ap);
-            setApModalOpen(true);
+            setActiveAppearanceCategory('ap');
+            setActiveSidebarTab('appearance');
           }}
           onSelectCable={(cable) => {
             setSelectedItemForStyle({ type: 'cable', id: cable.id, name: `${cable.id} - ${cable.cableType}`, appearance: cable.appearance });
-            setEditingCable(cable);
-            setPendingRoute(cable.route);
-            setCableModalOpen(true);
+            setActiveAppearanceCategory('cable');
+            setActiveSidebarTab('appearance');
           }}
           onAddCableClick={() => {
             setEditingCable(null);
@@ -1708,11 +1777,21 @@ export const App: React.FC = () => {
             setMdfDevices((prev) => [...prev, device]);
             recordHistoryAction('Add MDF');
           }
+          setSelectedItemForStyle({
+            type: 'mdf',
+            id: device.id,
+            name: `${device.id} - ${device.name}`,
+            appearance: device.appearance,
+          });
+          setActiveAppearanceCategory('mdf');
+          setActiveSidebarTab('appearance');
+          setSidebarOpen(true);
           setMdfModalOpen(false);
           setEditingMdf(null);
         }}
         onDelete={(id) => {
           setMdfDevices((prev) => prev.filter((d) => d.id !== id));
+          if (selectedItemForStyle?.id === id) setSelectedItemForStyle(null);
           recordHistoryAction('Delete MDF');
           setMdfModalOpen(false);
           setEditingMdf(null);
@@ -1738,11 +1817,21 @@ export const App: React.FC = () => {
             setIdfDevices((prev) => [...prev, device]);
             recordHistoryAction('Add IDF');
           }
+          setSelectedItemForStyle({
+            type: 'idf',
+            id: device.id,
+            name: `${device.id} - ${device.name}`,
+            appearance: device.appearance,
+          });
+          setActiveAppearanceCategory('idf');
+          setActiveSidebarTab('appearance');
+          setSidebarOpen(true);
           setIdfModalOpen(false);
           setEditingIdf(null);
         }}
         onDelete={(id) => {
           setIdfDevices((prev) => prev.filter((d) => d.id !== id));
+          if (selectedItemForStyle?.id === id) setSelectedItemForStyle(null);
           recordHistoryAction('Delete IDF');
           setIdfModalOpen(false);
           setEditingIdf(null);
@@ -1768,11 +1857,21 @@ export const App: React.FC = () => {
             setAccessPoints((prev) => [...prev, ap]);
             recordHistoryAction('Add Access Point');
           }
+          setSelectedItemForStyle({
+            type: 'ap',
+            id: ap.id,
+            name: `${ap.id} - ${ap.name}`,
+            appearance: ap.appearance,
+          });
+          setActiveAppearanceCategory('ap');
+          setActiveSidebarTab('appearance');
+          setSidebarOpen(true);
           setApModalOpen(false);
           setEditingAp(null);
         }}
         onDelete={(id) => {
           setAccessPoints((prev) => prev.filter((d) => d.id !== id));
+          if (selectedItemForStyle?.id === id) setSelectedItemForStyle(null);
           recordHistoryAction('Delete Access Point');
           setApModalOpen(false);
           setEditingAp(null);
@@ -1798,11 +1897,21 @@ export const App: React.FC = () => {
             setSignalReadings((prev) => [...prev, reading]);
             recordHistoryAction('Add Signal');
           }
+          setSelectedItemForStyle({
+            type: 'signal',
+            id: reading.id,
+            name: `${reading.id} - ${reading.ssid}`,
+            appearance: reading.appearance,
+          });
+          setActiveAppearanceCategory('signal');
+          setActiveSidebarTab('appearance');
+          setSidebarOpen(true);
           setSignalModalOpen(false);
           setEditingSignal(null);
         }}
         onDelete={(id) => {
           setSignalReadings((prev) => prev.filter((d) => d.id !== id));
+          if (selectedItemForStyle?.id === id) setSelectedItemForStyle(null);
           recordHistoryAction('Delete Signal');
           setSignalModalOpen(false);
           setEditingSignal(null);
@@ -1835,12 +1944,22 @@ export const App: React.FC = () => {
             setLanCables((prev) => [...prev, cable]);
             recordHistoryAction('Add LAN Cable');
           }
+          setSelectedItemForStyle({
+            type: 'cable',
+            id: cable.id,
+            name: `${cable.id} - ${cable.cableType}`,
+            appearance: cable.appearance,
+          });
+          setActiveAppearanceCategory('cable');
+          setActiveSidebarTab('appearance');
+          setSidebarOpen(true);
           setCableModalOpen(false);
           setEditingCable(null);
           setPendingRoute([]);
         }}
         onDeleteCable={(id) => {
           setLanCables((prev) => prev.filter((c) => c.id !== id));
+          if (selectedItemForStyle?.id === id) setSelectedItemForStyle(null);
           recordHistoryAction('Delete LAN Cable');
           setCableModalOpen(false);
           setEditingCable(null);

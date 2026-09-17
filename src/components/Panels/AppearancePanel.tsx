@@ -65,6 +65,8 @@ export type SelectedAppearanceItem =
 interface AppearancePanelProps {
   selectedItem?: SelectedAppearanceItem;
   appearanceSettings: AppearanceSettings;
+  activeCategory?: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal';
+  onActiveCategoryChange?: (cat: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal') => void;
   onUpdateGlobalSettings: (settings: AppearanceSettings) => void;
   onUpdateItemAppearance: (
     type: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal',
@@ -73,6 +75,8 @@ interface AppearancePanelProps {
   ) => void;
   onApplyToAllType: (type: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal', appearance: ItemAppearance) => void;
   onResetTypeToDefault: (type: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal', id?: string) => void;
+  onOpenEditModal?: (item: SelectedAppearanceItem) => void;
+  onDeselectItem?: () => void;
 }
 
 const PRESET_COLORS = [
@@ -90,23 +94,48 @@ const PRESET_COLORS = [
 export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   selectedItem,
   appearanceSettings,
+  activeCategory: externalCategory,
+  onActiveCategoryChange,
   onUpdateGlobalSettings,
   onUpdateItemAppearance,
   onApplyToAllType,
   onResetTypeToDefault,
+  onOpenEditModal,
+  onDeselectItem,
 }) => {
   const [scope, setScope] = useState<'item' | 'global'>('item');
-  const [activeCategory, setActiveCategory] = useState<'mdf' | 'idf' | 'ap' | 'cable' | 'signal'>('mdf');
+  const [internalCategory, setInternalCategory] = useState<'mdf' | 'idf' | 'ap' | 'cable' | 'signal'>('mdf');
   const [previewBg, setPreviewBg] = useState<'blueprint' | 'light' | 'dark'>('blueprint');
 
-  const targetCategory = selectedItem ? selectedItem.type : activeCategory;
+  // Resolved active category (#377-#379, #387)
+  const activeCategory = externalCategory || internalCategory;
+  const setActiveCategory = (cat: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal') => {
+    if (onActiveCategoryChange) {
+      onActiveCategoryChange(cat);
+    }
+    setInternalCategory(cat);
+  };
+
+  // Sync activeCategory when selectedItem changes
+  React.useEffect(() => {
+    if (selectedItem?.type) {
+      setActiveCategory(selectedItem.type);
+      setScope('item');
+    }
+  }, [selectedItem?.id, selectedItem?.type]);
+
+  // Target category for rendering controls
+  const targetCategory = activeCategory;
+  const isEditingSelectedItem = selectedItem && selectedItem.type === activeCategory && scope === 'item';
 
   // Resolve current appearance safely
   const getCurrentAppearance = (): ItemAppearance => {
-    const selectedItemAppearance =
-      (selectedItem as any)?.item?.appearance || (selectedItem as any)?.appearance;
-    if (selectedItem && scope === 'item' && selectedItemAppearance) {
-      return selectedItemAppearance;
+    if (isEditingSelectedItem) {
+      const selectedItemAppearance =
+        (selectedItem as any)?.item?.appearance || (selectedItem as any)?.appearance;
+      if (selectedItemAppearance) {
+        return selectedItemAppearance;
+      }
     }
 
     switch (targetCategory) {
@@ -139,7 +168,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
       updated.textSize = clampTextSize(updated.textSize);
     }
 
-    if (selectedItem && scope === 'item' && selectedItemId) {
+    if (isEditingSelectedItem && selectedItemId) {
       onUpdateItemAppearance(selectedItem.type, selectedItemId, updated);
     } else {
       const nextGlobal: AppearanceSettings = { ...appearanceSettings };
@@ -169,7 +198,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
 
   return (
     <div className="space-y-4 text-slate-800 pb-8 select-none">
-      {/* 1. Header & Scope Management */}
+      {/* 1. Header & Persistent Category Tabs (#371-#379, #387) */}
       <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -178,9 +207,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
             </div>
             <div>
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-                {selectedItem
-                  ? `Device: ${selectedItemId}`
-                  : 'Icon & Text Appearance'}
+                Icon & Text Appearance
               </h3>
               <p className="text-[10px] text-slate-400">
                 Custom size, color, background, borders, and fonts
@@ -191,45 +218,90 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
           <button
             type="button"
             onClick={() => {
-              if (selectedItem && scope === 'item' && selectedItemId) {
+              if (isEditingSelectedItem && selectedItemId) {
                 onResetTypeToDefault(selectedItem.type, selectedItemId);
               } else {
                 onResetTypeToDefault(targetCategory);
               }
             }}
             title="Reset to default settings"
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer"
           >
             <RotateCcw className="h-3 w-3" />
             Reset
           </button>
         </div>
 
-        {/* Category Switcher or Scope Switcher */}
-        {!selectedItem ? (
-          <div className="grid grid-cols-5 gap-1 text-[10px] font-bold text-center bg-slate-100 p-1 rounded-lg">
-            {(['mdf', 'idf', 'ap', 'cable', 'signal'] as const).map((cat) => (
+        {/* ALWAYS PERSISTENT 5-CATEGORY TABS (#371, #377, #378) */}
+        <div className="grid grid-cols-5 gap-1 text-[10px] font-bold text-center bg-slate-100 p-1 rounded-lg">
+          {(['mdf', 'idf', 'ap', 'cable', 'signal'] as const).map((cat) => {
+            const isActive = activeCategory === cat;
+            const isSelectedDeviceType = selectedItem && selectedItem.type === cat;
+            return (
               <button
                 key={`cat-btn-${cat}`}
                 type="button"
-                onClick={() => setActiveCategory(cat)}
-                className={`py-1.5 rounded uppercase tracking-wider transition-all ${
-                  activeCategory === cat
-                    ? 'bg-white text-indigo-700 shadow-2xs font-black'
-                    : 'text-slate-600 hover:text-slate-900'
+                onClick={() => {
+                  setActiveCategory(cat);
+                  if (selectedItem && selectedItem.type === cat) {
+                    setScope('item');
+                  } else {
+                    setScope('global');
+                  }
+                }}
+                className={`py-1.5 rounded uppercase tracking-wider transition-all relative cursor-pointer ${
+                  isActive
+                    ? 'bg-white text-indigo-700 shadow-xs font-black ring-1 ring-indigo-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
-                {cat}
+                <span>{cat}</span>
+                {isSelectedDeviceType && (
+                  <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                )}
               </button>
-            ))}
-          </div>
-        ) : (
+            );
+          })}
+        </div>
+
+        {/* Dynamic Context Badge & Scope Selectors (#379, #391, #392) */}
+        {selectedItem && selectedItem.type === activeCategory ? (
           <div className="space-y-2 pt-1 border-t border-slate-100">
+            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-indigo-50/80 border border-indigo-200 text-xs">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="h-2 w-2 rounded-full bg-indigo-600 shrink-0" />
+                <span className="font-bold text-indigo-950 truncate">
+                  Selected: {selectedItem.name || selectedItem.id}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {onOpenEditModal && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenEditModal(selectedItem)}
+                    className="text-[10px] font-bold text-indigo-700 hover:text-indigo-900 underline cursor-pointer"
+                  >
+                    Edit Details
+                  </button>
+                )}
+                {onDeselectItem && (
+                  <button
+                    type="button"
+                    onClick={onDeselectItem}
+                    title="Deselect item"
+                    className="text-[10px] font-semibold text-slate-400 hover:text-slate-700 px-1 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-1.5 text-xs">
               <button
                 type="button"
                 onClick={() => setScope('item')}
-                className={`py-1.5 px-2 rounded-lg border text-center font-bold transition-all ${
+                className={`py-1.5 px-2 rounded-lg border text-center font-bold transition-all cursor-pointer ${
                   scope === 'item'
                     ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-2xs'
                     : 'border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -240,13 +312,36 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                  onApplyToAllType(selectedItem.type, currentApp);
+                  onApplyToAllType(activeCategory, currentApp);
                 }}
-                className="py-1.5 px-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 font-bold transition-all"
+                className="py-1.5 px-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 font-bold transition-all cursor-pointer"
               >
-                Apply to All {selectedItem.type.toUpperCase()}
+                Apply to All {activeCategory.toUpperCase()}
               </button>
             </div>
+          </div>
+        ) : selectedItem ? (
+          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+            <div className="text-[11px] text-slate-600 truncate">
+              Editing defaults for <strong className="text-slate-900 uppercase font-black">{activeCategory}</strong>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCategory(selectedItem.type);
+                setScope('item');
+              }}
+              className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 underline ml-2 shrink-0 cursor-pointer"
+            >
+              Back to {selectedItem.id}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+            <span className="text-[11px] text-slate-600">
+              Default appearance for all <strong className="text-slate-900 uppercase font-bold">{activeCategory}</strong>
+            </span>
+            <span className="text-[10px] text-slate-400 italic">Click icon to customize</span>
           </div>
         )}
       </div>

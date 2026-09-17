@@ -74,6 +74,11 @@ interface FloorPlanWorkspaceProps {
   onSelectAp: (ap: AccessPoint) => void;
   onSelectSignal: (sig: SignalReading) => void;
   onSelectCable: (cable: LanCable) => void;
+  onEditMdf?: (mdf: MDFDevice) => void;
+  onEditIdf?: (idf: IDFDevice) => void;
+  onEditAp?: (ap: AccessPoint) => void;
+  onEditSignal?: (sig: SignalReading) => void;
+  onEditCable?: (cable: LanCable) => void;
   onAddPointClick: (normalizedPos: { x: number; y: number }, targetDeviceId?: string) => void;
   onUpdateMdfPos: (id: string, newPos: { x: number; y: number }) => void;
   onUpdateIdfPos: (id: string, newPos: { x: number; y: number }) => void;
@@ -114,6 +119,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
   onSelectAp,
   onSelectSignal,
   onSelectCable,
+  onEditMdf,
+  onEditIdf,
+  onEditAp,
+  onEditSignal,
+  onEditCable,
   onAddPointClick,
   onUpdateMdfPos,
   onUpdateIdfPos,
@@ -727,6 +737,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                         onSelectCable(cable);
                       }
                     }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      if (onEditCable) onEditCable(cable);
+                      else onSelectCable(cable);
+                    }}
                   />
 
                   {/* Route endpoint dots */}
@@ -768,6 +783,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                         } else {
                           onSelectCable(cable);
                         }
+                      }}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        if (onEditCable) onEditCable(cable);
+                        else onSelectCable(cable);
                       }}
                     >
                       {labelMode === 'full' ? (
@@ -900,6 +920,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                       onSelectMdf(mdf);
                     }
                   }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (onEditMdf) onEditMdf(mdf);
+                    else onSelectMdf(mdf);
+                  }}
                   className="interactive-marker group absolute pointer-events-auto flex flex-col items-center cursor-pointer select-none hover:scale-105 transition-transform"
                 >
                   <DeviceIconBox
@@ -945,6 +970,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                       onSelectIdf(idf);
                     }
                   }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (onEditIdf) onEditIdf(idf);
+                    else onSelectIdf(idf);
+                  }}
                   className="interactive-marker group absolute pointer-events-auto flex flex-col items-center cursor-pointer select-none hover:scale-105 transition-transform"
                 >
                   <DeviceIconBox
@@ -989,6 +1019,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                     } else {
                       onSelectAp(ap);
                     }
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (onEditAp) onEditAp(ap);
+                    else onSelectAp(ap);
                   }}
                   className="interactive-marker group absolute pointer-events-auto flex items-center gap-1.5 cursor-pointer select-none hover:scale-105 transition-transform"
                 >
@@ -1043,6 +1078,11 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                     } else {
                       onSelectSignal(sig);
                     }
+                  }}
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    if (onEditSignal) onEditSignal(sig);
+                    else onSelectSignal(sig);
                   }}
                   title={`Signal: ${sig.signal}% (${sig.classification})${sig.dbm !== undefined ? ` • ${sig.dbm} dBm` : ''}${sig.speedMbps !== undefined ? ` • ${sig.speedMbps} Mbps` : ''}${sig.location ? ` • ${sig.location}` : ''}`}
                   className="interactive-marker group absolute pointer-events-auto flex items-center gap-1 cursor-pointer select-none rounded-md px-1.5 py-0.5 shadow-md hover:scale-110 transition-all"
