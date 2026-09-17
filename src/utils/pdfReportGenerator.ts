@@ -4,7 +4,7 @@
  */
 
 import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
+import html2canvas from 'html2canvas-pro';
 import {
   FloorPlanDocument,
   MDFDevice,
@@ -95,65 +95,70 @@ export async function generateAndDownloadPdfReport(
   if (activeContainer) {
     const pages = Array.from((activeContainer as HTMLElement).querySelectorAll('.print-page')) as HTMLElement[];
     if (pages.length > 0) {
-      onProgress?.('Rendering Master Print Layout pages to high-resolution PDF...');
+      try {
+        onProgress?.('Rendering Master Print Layout pages to high-resolution PDF...');
 
-      const paperSize = printConfig?.paperSize || 'A4';
-      const paperDimensions: Record<string, [number, number]> = {
-        A4: [210, 297],
-        A3: [297, 420],
-        A5: [148, 210],
-        Letter: [215.9, 279.4],
-        Legal: [215.9, 355.6],
-        Tabloid: [279.4, 431.8],
-      };
+        const paperSize = printConfig?.paperSize || 'A4';
+        const paperDimensions: Record<string, [number, number]> = {
+          A4: [210, 297],
+          A3: [297, 420],
+          A5: [148, 210],
+          Letter: [215.9, 279.4],
+          Legal: [215.9, 355.6],
+          Tabloid: [279.4, 431.8],
+        };
 
-      const baseDims = paperDimensions[paperSize] || [210, 297];
-      const orientationSetting = printConfig?.orientation || 'auto';
-      const effectiveOrientation: 'landscape' | 'portrait' = (() => {
-        if (orientationSetting === 'portrait') return 'portrait';
-        if (orientationSetting === 'landscape') return 'landscape';
-        if (floorPlan && floorPlan.originalWidth && floorPlan.originalHeight) {
-          return floorPlan.originalWidth >= floorPlan.originalHeight ? 'landscape' : 'portrait';
-        }
-        return 'landscape';
-      })();
+        const baseDims = paperDimensions[paperSize] || [210, 297];
+        const orientationSetting = printConfig?.orientation || 'auto';
+        const effectiveOrientation: 'landscape' | 'portrait' = (() => {
+          if (orientationSetting === 'portrait') return 'portrait';
+          if (orientationSetting === 'landscape') return 'landscape';
+          if (floorPlan && floorPlan.originalWidth && floorPlan.originalHeight) {
+            return floorPlan.originalWidth >= floorPlan.originalHeight ? 'landscape' : 'portrait';
+          }
+          return 'landscape';
+        })();
 
-      const pageWidth =
-        effectiveOrientation === 'landscape'
-          ? Math.max(baseDims[0], baseDims[1])
-          : Math.min(baseDims[0], baseDims[1]);
-      const pageHeight =
-        effectiveOrientation === 'landscape'
-          ? Math.min(baseDims[0], baseDims[1])
-          : Math.max(baseDims[0], baseDims[1]);
+        const pageWidth =
+          effectiveOrientation === 'landscape'
+            ? Math.max(baseDims[0], baseDims[1])
+            : Math.min(baseDims[0], baseDims[1]);
+        const pageHeight =
+          effectiveOrientation === 'landscape'
+            ? Math.min(baseDims[0], baseDims[1])
+            : Math.max(baseDims[0], baseDims[1]);
 
-      const doc = new jsPDF({
-        orientation: effectiveOrientation,
-        unit: 'mm',
-        format: [pageWidth, pageHeight],
-      });
-
-      for (let i = 0; i < pages.length; i++) {
-        onProgress?.(`Rendering Page ${i + 1} of ${pages.length}...`);
-        const pageEl = pages[i];
-        const canvas = await html2canvas(pageEl, {
-          scale: 2.2, // ~300 DPI high resolution
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          windowWidth: effectiveOrientation === 'portrait' ? 840 : 1200,
+        const doc = new jsPDF({
+          orientation: effectiveOrientation,
+          unit: 'mm',
+          format: [pageWidth, pageHeight],
         });
-        const imgData = canvas.toDataURL('image/jpeg', 0.98);
-        if (i > 0) {
-          doc.addPage([pageWidth, pageHeight], effectiveOrientation);
-        }
-        doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
-      }
 
-      const filename = generateExportFilename(storeInfo, 'pdf');
-      doc.save(filename);
-      onProgress?.('Download complete!');
-      return filename;
+        for (let i = 0; i < pages.length; i++) {
+          onProgress?.(`Rendering Page ${i + 1} of ${pages.length}...`);
+          const pageEl = pages[i];
+          const canvas = await html2canvas(pageEl, {
+            scale: 2.2, // ~300 DPI high resolution
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            windowWidth: effectiveOrientation === 'portrait' ? 840 : 1200,
+          });
+          const imgData = canvas.toDataURL('image/jpeg', 0.98);
+          if (i > 0) {
+            doc.addPage([pageWidth, pageHeight], effectiveOrientation);
+          }
+          doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+        }
+
+        const filename = generateExportFilename(storeInfo, 'pdf');
+        doc.save(filename);
+        onProgress?.('Download complete!');
+        return filename;
+      } catch (domCaptureErr) {
+        console.warn('DOM PDF generation failed, falling back to programmatic PDF:', domCaptureErr);
+        onProgress?.('Falling back to vector composite engine...');
+      }
     }
   }
 
