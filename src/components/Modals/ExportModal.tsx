@@ -32,6 +32,7 @@ import {
   Loader2,
   Sliders,
   Settings,
+  Printer,
 } from 'lucide-react';
 
 interface ExportModalProps {
@@ -46,6 +47,7 @@ interface ExportModalProps {
   visibility: VisibilitySettings;
   storeInfo: StoreInfo;
   initialMode?: 'pdf' | 'png' | 'both';
+  onOpenPrint?: () => void;
 }
 
 type ExportMode = 'pdf' | 'png' | 'both';
@@ -62,6 +64,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   visibility,
   storeInfo,
   initialMode = 'pdf',
+  onOpenPrint,
 }) => {
   const [exportMode, setExportMode] = useState<ExportMode>(initialMode);
   const [pdfSettings, setPdfSettings] = useState<PdfExportSettings>(DEFAULT_PDF_EXPORT_SETTINGS);
@@ -139,23 +142,25 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         document.body.removeChild(link);
       }
 
-      if (exportMode === 'pdf' || exportMode === 'both') {
-        setProgressStep('Preparing PDF report...');
-        await generateAndDownloadPdfReport(
-          floorPlan,
-          mdfDevices,
-          idfDevices,
-          accessPoints,
-          signalReadings,
-          lanCables,
-          customVisibility,
-          storeInfo,
-          pdfSettings,
-          (step) => setProgressStep(step)
-        );
+      if (exportMode === 'pdf') {
+        if (onOpenPrint) {
+          onClose();
+          onOpenPrint();
+          return;
+        }
       }
 
-      setSuccessMessage('Export completed successfully! Check your downloads.');
+      if (exportMode === 'both') {
+        if (onOpenPrint) {
+          // Trigger print after downloading PNG
+          setTimeout(() => {
+            onClose();
+            onOpenPrint();
+          }, 600);
+        }
+      }
+
+      setSuccessMessage('Export completed successfully!');
       setTimeout(() => {
         setIsExporting(false);
       }, 800);
@@ -238,101 +243,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             </div>
           </div>
 
-          {/* PDF EXPORT SETTINGS (#177) */}
+          {/* PDF EXPORT SETTINGS (#177, #319, #320) */}
           {(exportMode === 'pdf' || exportMode === 'both') && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3">
-              <div className="flex items-center gap-1.5 pb-2 border-b border-slate-200">
-                <FileText className="h-4 w-4 text-indigo-600" />
+            <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 space-y-2">
+              <div className="flex items-center gap-1.5 pb-1.5 border-b border-blue-200">
+                <FileText className="h-4 w-4 text-blue-600" />
                 <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  PDF Export Settings (Multi-Page Report)
+                  Master Print / Save to PDF Engine
                 </span>
               </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 uppercase mb-1">
-                  Page Size & Orientation
-                </label>
-                <select
-                  value={pdfSettings.pageSize}
-                  onChange={(e) =>
-                    setPdfSettings({ ...pdfSettings, pageSize: e.target.value as any })
-                  }
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-800 focus:border-indigo-600 focus:outline-none"
-                >
-                  <option value="a4-landscape">A4 Landscape (Recommended for Hitmaps)</option>
-                  <option value="a4">A4 Portrait</option>
-                  <option value="letter">Letter Landscape</option>
-                </select>
-              </div>
-
-              <div>
-                <span className="block text-[11px] font-semibold text-slate-600 uppercase mb-2">
-                  Include Pages / Sections:
-                </span>
-                <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pdfSettings.includeProjectInfo}
-                      onChange={(e) =>
-                        setPdfSettings({ ...pdfSettings, includeProjectInfo: e.target.checked })
-                      }
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>Project Information Cover</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pdfSettings.includeFloorPlan}
-                      onChange={(e) =>
-                        setPdfSettings({ ...pdfSettings, includeFloorPlan: e.target.checked })
-                      }
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>Complete Floor Plan</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pdfSettings.includeLegendAndInfrastructure}
-                      onChange={(e) =>
-                        setPdfSettings({
-                          ...pdfSettings,
-                          includeLegendAndInfrastructure: e.target.checked,
-                        })
-                      }
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>Signal Legend & Inventory</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={pdfSettings.includeInsightsAndRecommendations}
-                      onChange={(e) =>
-                        setPdfSettings({
-                          ...pdfSettings,
-                          includeInsightsAndRecommendations: e.target.checked,
-                        })
-                      }
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>Insights & Recommendations</span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer col-span-2">
-                    <input
-                      type="checkbox"
-                      checked={pdfSettings.includeLanCableSummary}
-                      onChange={(e) =>
-                        setPdfSettings({ ...pdfSettings, includeLanCableSummary: e.target.checked })
-                      }
-                      className="rounded text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span>LAN Cable Schedule & Summary</span>
-                  </label>
-                </div>
-              </div>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                PDF output uses the unified <strong>Print / Save to PDF</strong> master engine. It supports Letter, A4, Legal, and A3 paper sizes, intelligent portrait/landscape fitting, full telemetry legends, and exact page breaks without content clipping.
+              </p>
             </div>
           )}
 
@@ -491,13 +413,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 </>
               ) : (
                 <>
-                  <Download className="h-3.5 w-3.5" />
+                  {exportMode === 'pdf' ? (
+                    <Printer className="h-3.5 w-3.5 text-white" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
                   <span>
                     {exportMode === 'pdf'
-                      ? 'Export PDF'
+                      ? 'Open Print / Save to PDF'
                       : exportMode === 'png'
                       ? 'Export PNG'
-                      : 'Export PNG + PDF'}
+                      : 'Export PNG + Print'}
                   </span>
                 </>
               )}

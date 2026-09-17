@@ -2086,6 +2086,10 @@ export const App: React.FC = () => {
         visibility={visibility}
         storeInfo={storeInfo}
         initialMode={exportModalMode}
+        onOpenPrint={() => {
+          setExportModalOpen(false);
+          handlePrint();
+        }}
       />
 
       {/* Reset All Items Confirmation Modal (#219 - #222) */}
