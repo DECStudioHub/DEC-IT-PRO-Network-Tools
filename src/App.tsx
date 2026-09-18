@@ -1648,6 +1648,7 @@ export const App: React.FC = () => {
             else if (type === 'ap') setAccessPoints((prev) => prev.map((d) => (d.id === id ? { ...d, appearance: app } : d)));
             else if (type === 'cable') setLanCables((prev) => prev.map((c) => (c.id === id ? { ...c, appearance: app } : c)));
             else if (type === 'signal') setSignalReadings((prev) => prev.map((s) => (s.id === id ? { ...s, appearance: app } : s)));
+            setSelectedItemForStyle((prev) => (prev && prev.id === id ? { ...prev, appearance: app } : prev));
           }}
           onApplyToAllType={(type, app) => {
             if (type === 'mdf') setMdfDevices((prev) => prev.map((d) => ({ ...d, appearance: { ...app } })));
@@ -1655,6 +1656,7 @@ export const App: React.FC = () => {
             else if (type === 'ap') setAccessPoints((prev) => prev.map((d) => ({ ...d, appearance: { ...app } })));
             else if (type === 'cable') setLanCables((prev) => prev.map((c) => ({ ...c, appearance: { ...app } })));
             else if (type === 'signal') setSignalReadings((prev) => prev.map((s) => ({ ...s, appearance: { ...app } })));
+            setSelectedItemForStyle((prev) => (prev && prev.type === type ? { ...prev, appearance: { ...app } } : prev));
           }}
           onResetTypeToDefault={(type, id) => {
             if (id) {
@@ -1663,12 +1665,14 @@ export const App: React.FC = () => {
               else if (type === 'ap') setAccessPoints((prev) => prev.map((d) => (d.id === id ? { ...d, appearance: undefined } : d)));
               else if (type === 'cable') setLanCables((prev) => prev.map((c) => (c.id === id ? { ...c, appearance: undefined } : c)));
               else if (type === 'signal') setSignalReadings((prev) => prev.map((s) => (s.id === id ? { ...s, appearance: undefined } : s)));
+              setSelectedItemForStyle((prev) => (prev && prev.id === id ? { ...prev, appearance: undefined } : prev));
             } else {
               if (type === 'mdf') setMdfDevices((prev) => prev.map((d) => ({ ...d, appearance: undefined })));
               else if (type === 'idf') setIdfDevices((prev) => prev.map((d) => ({ ...d, appearance: undefined })));
               else if (type === 'ap') setAccessPoints((prev) => prev.map((d) => ({ ...d, appearance: undefined })));
               else if (type === 'cable') setLanCables((prev) => prev.map((c) => ({ ...c, appearance: undefined })));
               else if (type === 'signal') setSignalReadings((prev) => prev.map((s) => ({ ...s, appearance: undefined })));
+              setSelectedItemForStyle((prev) => (prev && prev.type === type ? { ...prev, appearance: undefined } : prev));
             }
           }}
           selectedItem={selectedItemForStyle}

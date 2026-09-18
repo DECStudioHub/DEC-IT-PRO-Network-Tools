@@ -676,6 +676,8 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                 .join(' ');
 
               const cableApp = cable.appearance || appearanceSettings?.defaultCable || {};
+              const cableTextSize = clampTextSize(cableApp.textSize, 10);
+              const cableSubTextSize = Math.max(7, Math.round(cableTextSize * 0.85));
               const strokeCol = cableApp.lineColor || getCableStrokeColor(cable.cableType);
               const isFiber = cable.cableType === 'Fiber';
               const strokeThickness =
@@ -793,10 +795,10 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                       {labelMode === 'full' ? (
                         <>
                           <rect
-                            x="-50"
-                            y="-16"
-                            width="100"
-                            height="32"
+                            x={-Math.max(50, Math.round(cableTextSize * 5))}
+                            y={-Math.round(cableTextSize * 1.6)}
+                            width={Math.max(100, Math.round(cableTextSize * 10))}
+                            height={Math.round(cableTextSize * 3.2)}
                             rx="6"
                             fill="#0f172a"
                             stroke="#ffffff"
@@ -805,10 +807,10 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                           />
                           <text
                             x="0"
-                            y="-4"
+                            y={-Math.round(cableTextSize * 0.25)}
                             textAnchor="middle"
                             fill="#ffffff"
-                            fontSize="10"
+                            fontSize={cableTextSize}
                             fontWeight="bold"
                             fontFamily="monospace"
                           >
@@ -816,10 +818,10 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                           </text>
                           <text
                             x="0"
-                            y="9"
+                            y={Math.round(cableTextSize * 0.95)}
                             textAnchor="middle"
                             fill="#38bdf8"
-                            fontSize="9.5"
+                            fontSize={cableSubTextSize}
                             fontWeight="bold"
                             fontFamily="sans-serif"
                           >
@@ -830,10 +832,10 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                         <>
                           {/* Length-Only Mode (#84) */}
                           <rect
-                            x="-26"
-                            y="-11"
-                            width="52"
-                            height="22"
+                            x={-Math.max(26, Math.round(cableTextSize * 2.6))}
+                            y={-Math.round(cableTextSize * 1.1)}
+                            width={Math.max(52, Math.round(cableTextSize * 5.2))}
+                            height={Math.round(cableTextSize * 2.2)}
                             rx="5"
                             fill="#0f172a"
                             stroke="#ffffff"
@@ -842,10 +844,10 @@ export const FloorPlanWorkspace: React.FC<FloorPlanWorkspaceProps> = ({
                           />
                           <text
                             x="0"
-                            y="4"
+                            y={Math.round(cableTextSize * 0.38)}
                             textAnchor="middle"
                             fill="#38bdf8"
-                            fontSize="10.5"
+                            fontSize={cableTextSize}
                             fontWeight="bold"
                             fontFamily="sans-serif"
                           >

@@ -53,14 +53,16 @@ export const MIN_TEXT_SIZE = 8;
 export const MAX_TEXT_SIZE = 100;
 
 export function clampIconSize(size: any, fallback = DEFAULT_ICON_SIZE): number {
-  const n = Number(size);
-  if (isNaN(n) || !isFinite(n) || n <= 0) return fallback;
+  if (size === undefined || size === null || size === '') return fallback;
+  const n = typeof size === 'number' ? size : Number(size);
+  if (isNaN(n) || !isFinite(n)) return fallback;
   return Math.max(MIN_ICON_SIZE, Math.min(MAX_ICON_SIZE, Math.round(n)));
 }
 
 export function clampTextSize(size: any, fallback = DEFAULT_TEXT_SIZE): number {
-  const n = Number(size);
-  if (isNaN(n) || !isFinite(n) || n <= 0) return fallback;
+  if (size === undefined || size === null || size === '') return fallback;
+  const n = typeof size === 'number' ? size : Number(size);
+  if (isNaN(n) || !isFinite(n)) return fallback;
   return Math.max(MIN_TEXT_SIZE, Math.min(MAX_TEXT_SIZE, Math.round(n)));
 }
 

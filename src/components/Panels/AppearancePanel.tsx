@@ -129,17 +129,22 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
   const targetCategory = activeCategory;
   const isEditingSelectedItem = selectedItem && selectedItem.type === activeCategory && scope === 'item';
 
-  // Resolve current appearance safely
-  const getCurrentAppearance = (): ItemAppearance => {
-    if (isEditingSelectedItem) {
-      const selectedItemAppearance =
-        (selectedItem as any)?.item?.appearance || (selectedItem as any)?.appearance;
-      if (selectedItemAppearance) {
-        return selectedItemAppearance;
-      }
-    }
+  // Direct numeric input states to allow smooth typing without jumping or losing focus (#323, #324, #330, #331)
+  const [iconInputRaw, setIconInputRaw] = useState<string>('');
+  const [isIconInputFocused, setIsIconInputFocused] = useState<boolean>(false);
 
-    switch (targetCategory) {
+  const [textInputRaw, setTextInputRaw] = useState<string>('');
+  const [isTextInputFocused, setIsTextInputFocused] = useState<boolean>(false);
+
+  const [dbmInputRaw, setDbmInputRaw] = useState<string>('');
+  const [isDbmInputFocused, setIsDbmInputFocused] = useState<boolean>(false);
+
+  const [mbpsInputRaw, setMbpsInputRaw] = useState<string>('');
+  const [isMbpsInputFocused, setIsMbpsInputFocused] = useState<boolean>(false);
+
+  // Category default appearance helper
+  const getCategoryDefaultAppearance = (cat: 'mdf' | 'idf' | 'ap' | 'cable' | 'signal'): ItemAppearance => {
+    switch (cat) {
       case 'mdf':
         return appearanceSettings.defaultMdf;
       case 'idf':
@@ -153,20 +158,85 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
     }
   };
 
+  // Resolve current appearance safely with fallback to category defaults (#321, #328)
+  const getCurrentAppearance = (): ItemAppearance => {
+    const catDefault = getCategoryDefaultAppearance(targetCategory);
+    if (isEditingSelectedItem) {
+      const selectedItemAppearance =
+        (selectedItem as any)?.item?.appearance || (selectedItem as any)?.appearance;
+      if (selectedItemAppearance) {
+        return {
+          ...catDefault,
+          ...selectedItemAppearance,
+        };
+      }
+    }
+    return catDefault;
+  };
+
   const currentApp = getCurrentAppearance();
   const selectedItemId =
     (selectedItem as any)?.item?.id || (selectedItem as any)?.id || '';
 
-  // Safe handler with position protection
+  // Single authoritative source of truth for active sizes (#321, #328, #337)
+  const activeIconSize = clampIconSize(
+    targetCategory === 'signal'
+      ? currentApp.signalIconSize ?? currentApp.iconSize
+      : currentApp.iconSize,
+    targetCategory === 'ap' ? 32 : targetCategory === 'signal' ? 18 : DEFAULT_ICON_SIZE
+  );
+
+  const activeTextSize = clampTextSize(
+    targetCategory === 'signal'
+      ? currentApp.labelTextSize ?? currentApp.textSize
+      : currentApp.textSize,
+    DEFAULT_TEXT_SIZE
+  );
+
+  const activeDbmSize = clampTextSize(
+    currentApp.dbmTextSize,
+    Math.max(MIN_TEXT_SIZE, Math.round(activeTextSize * 0.8))
+  );
+
+  const activeMbpsSize = clampTextSize(
+    currentApp.mbpsTextSize,
+    Math.max(MIN_TEXT_SIZE, Math.round(activeTextSize * 0.8))
+  );
+
+  // Safe handler with position protection and single-source propagation
   const handleFieldChange = (fields: Partial<ItemAppearance>) => {
     const updated: ItemAppearance = { ...currentApp, ...fields };
 
-    // Clamping validations
-    if (updated.iconSize !== undefined) {
-      updated.iconSize = clampIconSize(updated.iconSize);
+    // Clamping validations (#324, #331, #337)
+    if (fields.iconSize !== undefined) {
+      const clamped = clampIconSize(fields.iconSize, activeIconSize);
+      updated.iconSize = clamped;
+      if (targetCategory === 'signal') {
+        updated.signalIconSize = clamped;
+      }
     }
-    if (updated.textSize !== undefined) {
-      updated.textSize = clampTextSize(updated.textSize);
+    if (fields.textSize !== undefined) {
+      const clamped = clampTextSize(fields.textSize, activeTextSize);
+      updated.textSize = clamped;
+      if (targetCategory === 'signal') {
+        updated.labelTextSize = clamped;
+      }
+    }
+    if (fields.signalIconSize !== undefined) {
+      const clamped = clampIconSize(fields.signalIconSize, activeIconSize);
+      updated.signalIconSize = clamped;
+      updated.iconSize = clamped;
+    }
+    if (fields.labelTextSize !== undefined) {
+      const clamped = clampTextSize(fields.labelTextSize, activeTextSize);
+      updated.labelTextSize = clamped;
+      updated.textSize = clamped;
+    }
+    if (fields.dbmTextSize !== undefined) {
+      updated.dbmTextSize = clampTextSize(fields.dbmTextSize, activeDbmSize);
+    }
+    if (fields.mbpsTextSize !== undefined) {
+      updated.mbpsTextSize = clampTextSize(fields.mbpsTextSize, activeMbpsSize);
     }
 
     if (isEditingSelectedItem && selectedItemId) {
@@ -183,19 +253,29 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
     }
   };
 
-  // Stepper handlers
+  // Exact 1 px stepper handlers (#322, #329)
   const handleIconSizeStep = (delta: number) => {
-    const current = clampIconSize(currentApp.iconSize, DEFAULT_ICON_SIZE);
-    handleFieldChange({ iconSize: clampIconSize(current + delta) });
+    const next = clampIconSize(activeIconSize + delta);
+    handleFieldChange({ iconSize: next });
   };
 
   const handleTextSizeStep = (delta: number) => {
-    const current = clampTextSize(currentApp.textSize, DEFAULT_TEXT_SIZE);
-    handleFieldChange({ textSize: clampTextSize(current + delta) });
+    const next = clampTextSize(activeTextSize + delta);
+    handleFieldChange({ textSize: next });
   };
 
-  const activeIconSize = clampIconSize(currentApp.iconSize, DEFAULT_ICON_SIZE);
-  const activeTextSize = clampTextSize(currentApp.textSize, DEFAULT_TEXT_SIZE);
+  // Mathematical percentage calculation for exact slider alignment (#319, #327, #335)
+  // Range: 10 - 100 for Icon, 8 - 100 for Text
+  const iconPercentage = Math.max(0, Math.min(100, ((activeIconSize - MIN_ICON_SIZE) / (MAX_ICON_SIZE - MIN_ICON_SIZE)) * 100));
+  const textPercentage = Math.max(0, Math.min(100, ((activeTextSize - MIN_TEXT_SIZE) / (MAX_TEXT_SIZE - MIN_TEXT_SIZE)) * 100));
+  const dbmPercentage = Math.max(0, Math.min(100, ((activeDbmSize - MIN_TEXT_SIZE) / (MAX_TEXT_SIZE - MIN_TEXT_SIZE)) * 100));
+  const mbpsPercentage = Math.max(0, Math.min(100, ((activeMbpsSize - MIN_TEXT_SIZE) / (MAX_TEXT_SIZE - MIN_TEXT_SIZE)) * 100));
+
+  // Precise track background gradients accounting for 18px thumb radius
+  const iconSliderBg = `linear-gradient(to right, #4f46e5 0%, #4f46e5 calc(${iconPercentage}% + ${(0.5 - iconPercentage / 100) * 18}px), #e2e8f0 calc(${iconPercentage}% + ${(0.5 - iconPercentage / 100) * 18}px), #e2e8f0 100%)`;
+  const textSliderBg = `linear-gradient(to right, #4f46e5 0%, #4f46e5 calc(${textPercentage}% + ${(0.5 - textPercentage / 100) * 18}px), #e2e8f0 calc(${textPercentage}% + ${(0.5 - textPercentage / 100) * 18}px), #e2e8f0 100%)`;
+  const dbmSliderBg = `linear-gradient(to right, #4f46e5 0%, #4f46e5 calc(${dbmPercentage}% + ${(0.5 - dbmPercentage / 100) * 18}px), #e2e8f0 calc(${dbmPercentage}% + ${(0.5 - dbmPercentage / 100) * 18}px), #e2e8f0 100%)`;
+  const mbpsSliderBg = `linear-gradient(to right, #2563eb 0%, #2563eb calc(${mbpsPercentage}% + ${(0.5 - mbpsPercentage / 100) * 18}px), #e2e8f0 calc(${mbpsPercentage}% + ${(0.5 - mbpsPercentage / 100) * 18}px), #e2e8f0 100%)`;
 
   return (
     <div className="space-y-4 text-slate-800 pb-8 select-none">
@@ -496,7 +576,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
         </div>
       </div>
 
-      {/* 3. ICON SIZE CUSTOMIZATION (Max 100 px) (Requirement 268, 270, 271) */}
+      {/* 3. ICON SIZE CUSTOMIZATION (10 – 100 px) (Requirement 318 - 325) */}
       <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
@@ -506,61 +586,104 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
           <span className="text-[10px] text-slate-400 font-mono">Default: 48 px</span>
         </div>
 
-        {/* Direct Input & Stepper */}
+        {/* Direct Input, Steppers & Slider */}
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => handleIconSizeStep(-4)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-            title="Decrease icon size by 4px"
+            disabled={activeIconSize <= MIN_ICON_SIZE}
+            onClick={() => handleIconSizeStep(-1)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Decrease icon size by 1px"
+            aria-label="Decrease icon size by 1px"
           >
             <Minus className="h-4 w-4" />
           </button>
 
           <input
+            id="icon-size-slider"
             type="range"
             min={MIN_ICON_SIZE}
             max={MAX_ICON_SIZE}
-            step="1"
+            step={1}
             value={activeIconSize}
-            onChange={(e) => handleFieldChange({ iconSize: parseInt(e.target.value) || DEFAULT_ICON_SIZE })}
-            className="flex-1 accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val)) {
+                handleFieldChange({ iconSize: val });
+              }
+            }}
+            style={{ background: iconSliderBg }}
+            className="accurate-slider flex-1"
+            aria-label="Icon Size Slider"
           />
 
           <button
             type="button"
-            onClick={() => handleIconSizeStep(4)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-            title="Increase icon size by 4px"
+            disabled={activeIconSize >= MAX_ICON_SIZE}
+            onClick={() => handleIconSizeStep(1)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Increase icon size by 1px"
+            aria-label="Increase icon size by 1px"
           >
             <Plus className="h-4 w-4" />
           </button>
 
-          <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2 py-1">
+          <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
             <input
+              id="icon-size-direct-input"
               type="number"
               min={MIN_ICON_SIZE}
               max={MAX_ICON_SIZE}
-              value={activeIconSize}
+              value={isIconInputFocused ? iconInputRaw : activeIconSize}
+              onFocus={() => {
+                setIsIconInputFocused(true);
+                setIconInputRaw(String(activeIconSize));
+              }}
               onChange={(e) => {
-                const val = parseInt(e.target.value);
-                if (!isNaN(val)) {
-                  handleFieldChange({ iconSize: val });
+                const raw = e.target.value;
+                setIconInputRaw(raw);
+                if (raw === '') return;
+                const parsed = parseInt(raw, 10);
+                if (!isNaN(parsed)) {
+                  if (parsed > MAX_ICON_SIZE) {
+                    handleFieldChange({ iconSize: MAX_ICON_SIZE });
+                  } else if (parsed >= MIN_ICON_SIZE && parsed <= MAX_ICON_SIZE) {
+                    handleFieldChange({ iconSize: parsed });
+                  }
+                }
+              }}
+              onBlur={() => {
+                setIsIconInputFocused(false);
+                const parsed = parseInt(iconInputRaw, 10);
+                if (isNaN(parsed)) {
+                  handleFieldChange({ iconSize: activeIconSize });
+                } else if (parsed < MIN_ICON_SIZE) {
+                  handleFieldChange({ iconSize: MIN_ICON_SIZE });
+                } else if (parsed > MAX_ICON_SIZE) {
+                  handleFieldChange({ iconSize: MAX_ICON_SIZE });
+                } else {
+                  handleFieldChange({ iconSize: parsed });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
                 }
               }}
               className="w-10 text-center text-xs font-mono font-bold text-indigo-700 bg-transparent focus:outline-hidden"
+              aria-label="Icon Size in pixels"
             />
             <span className="text-[10px] text-slate-400 font-mono">px</span>
           </div>
         </div>
 
-        {/* Quick Presets */}
+        {/* Quick Presets (Requirement 325) */}
         <div className="grid grid-cols-5 gap-1 text-[10px]">
           {[
             { label: 'Small', px: 24 },
             { label: 'Medium', px: 36 },
             { label: 'Default', px: 48 },
-            { label: 'Large', px: 64 },
+            { label: 'Large', px: 72 },
             { label: '100px', px: 100 },
           ].map((p) => (
             <button
@@ -579,7 +702,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
         </div>
       </div>
 
-      {/* 4. TEXT SIZE CUSTOMIZATION (Max 100 px) (Requirement 269, 270, 271) */}
+      {/* 4. TEXT SIZE CUSTOMIZATION (8 – 100 px) (Requirement 326 - 331) */}
       <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
         <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
@@ -589,55 +712,98 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
           <span className="text-[10px] text-slate-400 font-mono">Independent of icon size</span>
         </div>
 
-        {/* Direct Input & Stepper */}
+        {/* Direct Input, Steppers & Slider */}
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => handleTextSizeStep(-2)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-            title="Decrease text size by 2px"
+            disabled={activeTextSize <= MIN_TEXT_SIZE}
+            onClick={() => handleTextSizeStep(-1)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Decrease text size by 1px"
+            aria-label="Decrease text size by 1px"
           >
             <Minus className="h-4 w-4" />
           </button>
 
           <input
+            id="text-size-slider"
             type="range"
             min={MIN_TEXT_SIZE}
             max={MAX_TEXT_SIZE}
-            step="1"
+            step={1}
             value={activeTextSize}
-            onChange={(e) => handleFieldChange({ textSize: parseInt(e.target.value) || DEFAULT_TEXT_SIZE })}
-            className="flex-1 accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              if (!isNaN(val)) {
+                handleFieldChange({ textSize: val });
+              }
+            }}
+            style={{ background: textSliderBg }}
+            className="accurate-slider flex-1"
+            aria-label="Text Size Slider"
           />
 
           <button
             type="button"
-            onClick={() => handleTextSizeStep(2)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-            title="Increase text size by 2px"
+            disabled={activeTextSize >= MAX_TEXT_SIZE}
+            onClick={() => handleTextSizeStep(1)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Increase text size by 1px"
+            aria-label="Increase text size by 1px"
           >
             <Plus className="h-4 w-4" />
           </button>
 
-          <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2 py-1">
+          <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-slate-50 px-2 py-1 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
             <input
+              id="text-size-direct-input"
               type="number"
               min={MIN_TEXT_SIZE}
               max={MAX_TEXT_SIZE}
-              value={activeTextSize}
+              value={isTextInputFocused ? textInputRaw : activeTextSize}
+              onFocus={() => {
+                setIsTextInputFocused(true);
+                setTextInputRaw(String(activeTextSize));
+              }}
               onChange={(e) => {
-                const val = parseInt(e.target.value);
-                if (!isNaN(val)) {
-                  handleFieldChange({ textSize: val });
+                const raw = e.target.value;
+                setTextInputRaw(raw);
+                if (raw === '') return;
+                const parsed = parseInt(raw, 10);
+                if (!isNaN(parsed)) {
+                  if (parsed > MAX_TEXT_SIZE) {
+                    handleFieldChange({ textSize: MAX_TEXT_SIZE });
+                  } else if (parsed >= MIN_TEXT_SIZE && parsed <= MAX_TEXT_SIZE) {
+                    handleFieldChange({ textSize: parsed });
+                  }
+                }
+              }}
+              onBlur={() => {
+                setIsTextInputFocused(false);
+                const parsed = parseInt(textInputRaw, 10);
+                if (isNaN(parsed)) {
+                  handleFieldChange({ textSize: activeTextSize });
+                } else if (parsed < MIN_TEXT_SIZE) {
+                  handleFieldChange({ textSize: MIN_TEXT_SIZE });
+                } else if (parsed > MAX_TEXT_SIZE) {
+                  handleFieldChange({ textSize: MAX_TEXT_SIZE });
+                } else {
+                  handleFieldChange({ textSize: parsed });
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
                 }
               }}
               className="w-10 text-center text-xs font-mono font-bold text-indigo-700 bg-transparent focus:outline-hidden"
+              aria-label="Text Size in pixels"
             />
             <span className="text-[10px] text-slate-400 font-mono">px</span>
           </div>
         </div>
 
-        {/* Quick Presets */}
+        {/* Quick Presets (Requirement 325, 348) */}
         <div className="grid grid-cols-5 gap-1 text-[10px]">
           {[
             { label: 'Small', px: 11 },
@@ -662,7 +828,7 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
         </div>
       </div>
 
-      {/* 4B. SIGNAL DBM & MBPS TEXT SIZES (Requirement 340) */}
+      {/* 4B. SIGNAL DBM & MBPS TEXT SIZES (Requirement 340, 341) */}
       {targetCategory === 'signal' && (
         <div className="rounded-xl border border-slate-200 bg-white p-3.5 shadow-2xs space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
@@ -677,38 +843,85 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
           <div className="space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-700">dBm Text Size:</span>
-              <span className="font-mono text-indigo-700 font-bold">{currentApp.dbmTextSize || 10} px</span>
+              <span className="font-mono text-indigo-700 font-bold">{activeDbmSize} px</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleFieldChange({ dbmTextSize: Math.max(8, (currentApp.dbmTextSize || 10) - 1) })}
-                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                disabled={activeDbmSize <= MIN_TEXT_SIZE}
+                onClick={() => handleFieldChange({ dbmTextSize: clampTextSize(activeDbmSize - 1) })}
+                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Decrease dBm text size by 1px"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
               <input
                 type="range"
-                min="8"
-                max="100"
-                value={currentApp.dbmTextSize || 10}
-                onChange={(e) => handleFieldChange({ dbmTextSize: parseInt(e.target.value) || 10 })}
-                className="flex-1 accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                min={MIN_TEXT_SIZE}
+                max={MAX_TEXT_SIZE}
+                step={1}
+                value={activeDbmSize}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) {
+                    handleFieldChange({ dbmTextSize: val });
+                  }
+                }}
+                style={{ background: dbmSliderBg }}
+                className="accurate-slider flex-1"
+                aria-label="dBm Text Size Slider"
               />
               <button
                 type="button"
-                onClick={() => handleFieldChange({ dbmTextSize: Math.min(100, (currentApp.dbmTextSize || 10) + 1) })}
-                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                disabled={activeDbmSize >= MAX_TEXT_SIZE}
+                onClick={() => handleFieldChange({ dbmTextSize: clampTextSize(activeDbmSize + 1) })}
+                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Increase dBm text size by 1px"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
               <input
                 type="number"
-                min="8"
-                max="100"
-                value={currentApp.dbmTextSize || 10}
-                onChange={(e) => handleFieldChange({ dbmTextSize: parseInt(e.target.value) || 10 })}
+                min={MIN_TEXT_SIZE}
+                max={MAX_TEXT_SIZE}
+                value={isDbmInputFocused ? dbmInputRaw : activeDbmSize}
+                onFocus={() => {
+                  setIsDbmInputFocused(true);
+                  setDbmInputRaw(String(activeDbmSize));
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setDbmInputRaw(raw);
+                  if (raw === '') return;
+                  const parsed = parseInt(raw, 10);
+                  if (!isNaN(parsed)) {
+                    if (parsed > MAX_TEXT_SIZE) {
+                      handleFieldChange({ dbmTextSize: MAX_TEXT_SIZE });
+                    } else if (parsed >= MIN_TEXT_SIZE && parsed <= MAX_TEXT_SIZE) {
+                      handleFieldChange({ dbmTextSize: parsed });
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  setIsDbmInputFocused(false);
+                  const parsed = parseInt(dbmInputRaw, 10);
+                  if (isNaN(parsed)) {
+                    handleFieldChange({ dbmTextSize: activeDbmSize });
+                  } else if (parsed < MIN_TEXT_SIZE) {
+                    handleFieldChange({ dbmTextSize: MIN_TEXT_SIZE });
+                  } else if (parsed > MAX_TEXT_SIZE) {
+                    handleFieldChange({ dbmTextSize: MAX_TEXT_SIZE });
+                  } else {
+                    handleFieldChange({ dbmTextSize: parsed });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                }}
                 className="w-12 text-center text-xs font-mono font-bold text-indigo-700 rounded border border-slate-200 bg-slate-50 py-1"
+                aria-label="dBm Text Size in pixels"
               />
             </div>
           </div>
@@ -717,38 +930,85 @@ export const AppearancePanel: React.FC<AppearancePanelProps> = ({
           <div className="space-y-1 pt-1">
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-700">Mbps Text Size:</span>
-              <span className="font-mono text-blue-700 font-bold">{currentApp.mbpsTextSize || 10} px</span>
+              <span className="font-mono text-blue-700 font-bold">{activeMbpsSize} px</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleFieldChange({ mbpsTextSize: Math.max(8, (currentApp.mbpsTextSize || 10) - 1) })}
-                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                disabled={activeMbpsSize <= MIN_TEXT_SIZE}
+                onClick={() => handleFieldChange({ mbpsTextSize: clampTextSize(activeMbpsSize - 1) })}
+                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Decrease Mbps text size by 1px"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
               <input
                 type="range"
-                min="8"
-                max="100"
-                value={currentApp.mbpsTextSize || 10}
-                onChange={(e) => handleFieldChange({ mbpsTextSize: parseInt(e.target.value) || 10 })}
-                className="flex-1 accent-blue-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                min={MIN_TEXT_SIZE}
+                max={MAX_TEXT_SIZE}
+                step={1}
+                value={activeMbpsSize}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value, 10);
+                  if (!isNaN(val)) {
+                    handleFieldChange({ mbpsTextSize: val });
+                  }
+                }}
+                style={{ background: mbpsSliderBg }}
+                className="accurate-slider flex-1"
+                aria-label="Mbps Text Size Slider"
               />
               <button
                 type="button"
-                onClick={() => handleFieldChange({ mbpsTextSize: Math.min(100, (currentApp.mbpsTextSize || 10) + 1) })}
-                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                disabled={activeMbpsSize >= MAX_TEXT_SIZE}
+                onClick={() => handleFieldChange({ mbpsTextSize: clampTextSize(activeMbpsSize + 1) })}
+                className="flex h-7 w-7 items-center justify-center rounded border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Increase Mbps text size by 1px"
               >
                 <Plus className="h-3.5 w-3.5" />
               </button>
               <input
                 type="number"
-                min="8"
-                max="100"
-                value={currentApp.mbpsTextSize || 10}
-                onChange={(e) => handleFieldChange({ mbpsTextSize: parseInt(e.target.value) || 10 })}
+                min={MIN_TEXT_SIZE}
+                max={MAX_TEXT_SIZE}
+                value={isMbpsInputFocused ? mbpsInputRaw : activeMbpsSize}
+                onFocus={() => {
+                  setIsMbpsInputFocused(true);
+                  setMbpsInputRaw(String(activeMbpsSize));
+                }}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setMbpsInputRaw(raw);
+                  if (raw === '') return;
+                  const parsed = parseInt(raw, 10);
+                  if (!isNaN(parsed)) {
+                    if (parsed > MAX_TEXT_SIZE) {
+                      handleFieldChange({ mbpsTextSize: MAX_TEXT_SIZE });
+                    } else if (parsed >= MIN_TEXT_SIZE && parsed <= MAX_TEXT_SIZE) {
+                      handleFieldChange({ mbpsTextSize: parsed });
+                    }
+                  }
+                }}
+                onBlur={() => {
+                  setIsMbpsInputFocused(false);
+                  const parsed = parseInt(mbpsInputRaw, 10);
+                  if (isNaN(parsed)) {
+                    handleFieldChange({ mbpsTextSize: activeMbpsSize });
+                  } else if (parsed < MIN_TEXT_SIZE) {
+                    handleFieldChange({ mbpsTextSize: MIN_TEXT_SIZE });
+                  } else if (parsed > MAX_TEXT_SIZE) {
+                    handleFieldChange({ mbpsTextSize: MAX_TEXT_SIZE });
+                  } else {
+                    handleFieldChange({ mbpsTextSize: parsed });
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                }}
                 className="w-12 text-center text-xs font-mono font-bold text-blue-700 rounded border border-slate-200 bg-slate-50 py-1"
+                aria-label="Mbps Text Size in pixels"
               />
             </div>
           </div>
